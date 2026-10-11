@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'admin'])->group(function () {
+    Route::post('courses/import', [CourseController::class, 'import'])->name('courses.import');
+    Route::get('courses/{course}/export', [CourseController::class, 'export'])->name('courses.export');
     Route::resource('courses', CourseController::class)->except('show');
     Route::resource('courses.lessons', LessonController::class)->shallow()->except(['show', 'index']);
     Route::resource('lessons.pages', PageController::class)->shallow()->except(['show', 'index']);

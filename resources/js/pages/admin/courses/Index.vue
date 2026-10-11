@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 
 defineProps<{
@@ -28,9 +29,28 @@ defineOptions({
     <div class="flex flex-col gap-4 p-4">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold tracking-tight">Kurzusok</h1>
-            <Link :href="CourseController.create()">
-                <Button>Új kurzus</Button>
-            </Link>
+            <div class="flex items-center gap-2">
+                <Form
+                    v-bind="CourseController.import.form()"
+                    v-slot="{ errors, processing }"
+                    class="flex items-center gap-2"
+                >
+                    <input
+                        type="file"
+                        name="archive"
+                        accept=".zip,application/zip"
+                        required
+                        class="text-sm"
+                    />
+                    <Button type="submit" variant="outline" :disabled="processing"
+                        >Importálás</Button
+                    >
+                    <InputError :message="errors.archive" />
+                </Form>
+                <Link :href="CourseController.create()">
+                    <Button>Új kurzus</Button>
+                </Link>
+            </div>
         </div>
 
         <div
@@ -62,6 +82,11 @@ defineOptions({
                                     >Szerkesztés</Button
                                 >
                             </Link>
+                            <a :href="CourseController.export(course.id).url">
+                                <Button variant="outline" size="sm"
+                                    >Export</Button
+                                >
+                            </a>
                             <Form
                                 v-bind="
                                     CourseController.destroy.form(course.id)

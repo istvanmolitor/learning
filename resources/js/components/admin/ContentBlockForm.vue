@@ -3,6 +3,7 @@ import { Form } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import type { RouteFormDefinition } from '@/wayfinder';
 import InputError from '@/components/InputError.vue';
+import RichTextEditor from '@/components/admin/RichTextEditor.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,7 @@ const props = defineProps<{
 }>();
 
 const type = ref(props.block?.type ?? 'heading');
+const html = ref(props.block?.data.html ?? '');
 </script>
 
 <template>
@@ -63,12 +65,8 @@ const type = ref(props.block?.type ?? 'heading');
 
         <template v-else-if="type === 'text'">
             <div class="grid gap-2">
-                <Label>HTML tartalom</Label>
-                <textarea
-                    name="html"
-                    rows="4"
-                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                    >{{ block?.data.html }}</textarea>
+                <Label>Formázott szöveg</Label>
+                <RichTextEditor v-model="html" name="html" />
                 <InputError :message="errors.html" />
             </div>
         </template>

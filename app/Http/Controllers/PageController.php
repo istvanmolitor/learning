@@ -26,6 +26,11 @@ class PageController extends Controller
                 'is_completed' => $lesson->isCompletedBy($request->user()),
             ]);
 
+        $lessonPages = $lesson->pages()->get(['id', 'slug', 'title']);
+        $currentIndex = $lessonPages->search(fn ($lessonPage) => $lessonPage->id === $page->id);
+        $previousPage = $currentIndex > 0 ? $lessonPages->get($currentIndex - 1) : null;
+        $nextPage = $currentIndex !== false ? $lessonPages->get($currentIndex + 1) : null;
+
         return Inertia::render('courses/lessons/pages/Show', [
             'course' => ['slug' => $course->slug, 'title' => $course->title],
             'lesson' => ['slug' => $lesson->slug, 'title' => $lesson->title],
@@ -34,6 +39,12 @@ class PageController extends Controller
                 'title' => $page->title,
                 'slug' => $page->slug,
                 'is_completed' => $page->isCompletedBy($request->user()),
+            ],
+            'pagination' => [
+                'index' => $currentIndex !== false ? $currentIndex + 1 : null,
+                'total' => $lessonPages->count(),
+                'previous' => $previousPage ? ['slug' => $previousPage->slug, 'title' => $previousPage->title] : null,
+                'next' => $nextPage ? ['slug' => $nextPage->slug, 'title' => $nextPage->title] : null,
             ],
             'contentBlocks' => $page->contentBlocks->map(fn ($block) => [
                 'id' => $block->id,

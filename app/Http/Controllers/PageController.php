@@ -17,9 +17,19 @@ class PageController extends Controller
     {
         Gate::authorize('view', $course);
 
+        $lessons = $course->lessons()
+            ->get()
+            ->map(fn ($lesson) => [
+                'id' => $lesson->id,
+                'title' => $lesson->title,
+                'slug' => $lesson->slug,
+                'is_completed' => $lesson->isCompletedBy($request->user()),
+            ]);
+
         return Inertia::render('courses/lessons/pages/Show', [
             'course' => ['slug' => $course->slug, 'title' => $course->title],
             'lesson' => ['slug' => $lesson->slug, 'title' => $lesson->title],
+            'lessons' => $lessons,
             'page' => [
                 'title' => $page->title,
                 'slug' => $page->slug,

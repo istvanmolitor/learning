@@ -43,6 +43,15 @@ class LessonController extends Controller
             })
             : [];
 
+        $lessons = $course->lessons()
+            ->get()
+            ->map(fn ($lesson) => [
+                'id' => $lesson->id,
+                'title' => $lesson->title,
+                'slug' => $lesson->slug,
+                'is_completed' => $lesson->isCompletedBy($user),
+            ]);
+
         return Inertia::render('courses/lessons/Show', [
             'course' => ['slug' => $course->slug, 'title' => $course->title],
             'lesson' => [
@@ -50,6 +59,7 @@ class LessonController extends Controller
                 'slug' => $lesson->slug,
                 'is_completed' => $isCompleted,
             ],
+            'lessons' => $lessons,
             'pages' => $pages,
             'questions' => $questions,
         ]);

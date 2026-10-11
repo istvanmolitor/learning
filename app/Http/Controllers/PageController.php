@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Course;
+use App\Models\Lesson;
+use App\Models\Page;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class PageController extends Controller
+{
+    public function show(Request $request, Course $course, Lesson $lesson, Page $page): Response
+    {
+        Gate::authorize('view', $course);
+
+        return Inertia::render('courses/lessons/pages/Show', [
+            'course' => ['slug' => $course->slug, 'title' => $course->title],
+            'lesson' => ['slug' => $lesson->slug, 'title' => $lesson->title],
+            'page' => [
+                'title' => $page->title,
+                'slug' => $page->slug,
+                'is_completed' => $page->isCompletedBy($request->user()),
+            ],
+            'contentBlocks' => $page->contentBlocks->map(fn ($block) => [
+                'id' => $block->id,
+                'type' => $block->type->value,
+                'data' => $block->data,
+            ]),
+        ]);
+    }
+
+    public function complete(Request $request, Course $course, Lesson $lesson, Page $page): RedirectResponse
+    {
+        Gate::authorize('view', $course);
+
+        $page->markCompletedBy($request->user());
+
+        return back();
+    }
+}

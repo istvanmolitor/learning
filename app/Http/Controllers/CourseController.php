@@ -36,14 +36,21 @@ class CourseController extends Controller
     {
         Gate::authorize('view', $course);
 
-        $lessons = $course->lessons()
-            ->get()
-            ->map(fn ($lesson) => [
-                'id' => $lesson->id,
-                'title' => $lesson->title,
-                'slug' => $lesson->slug,
-                'is_completed' => $lesson->isCompletedBy($request->user()),
-            ]);
+        $user = $request->user();
+
+        $allLessons = $course->lessons()->with('pages')->get();
+
+        $lessons = $allLessons->map(fn ($lesson) => [
+            'id' => $lesson->id,
+            'title' => $lesson->title,
+            'slug' => $lesson->slug,
+            'is_completed' => $lesson->isCompletedBy($user),
+        ]);
+
+        $continueLesson = $allLessons->first(fn ($lesson) => ! $lesson->isCompletedBy($user))
+            ?? $allLessons->last();
+
+        $continuePage = $continueLesson?->pages->first(fn ($page) => ! $page->isCompletedBy($user));
 
         return Inertia::render('courses/Show', [
             'course' => [
@@ -52,6 +59,10 @@ class CourseController extends Controller
                 'description' => $course->description,
             ],
             'lessons' => $lessons,
+            'continueTo' => $continueLesson ? [
+                'lessonSlug' => $continueLesson->slug,
+                'pageSlug' => $continuePage?->slug,
+            ] : null,
         ]);
     }
 }

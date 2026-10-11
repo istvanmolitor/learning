@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { CheckCircle2, Circle } from '@lucide/vue';
+import { computed } from 'vue';
 import CourseController from '@/actions/App/Http/Controllers/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/LessonController';
 import PageController from '@/actions/App/Http/Controllers/PageController';
 import QuestionResponseController from '@/actions/App/Http/Controllers/QuestionResponseController';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 const props = defineProps<{
     course: { title: string; slug: string };
@@ -20,6 +22,16 @@ const props = defineProps<{
         is_correct: boolean | null;
     }[];
 }>();
+
+const completedPagesCount = computed(
+    () => props.pages.filter((page) => page.is_completed).length,
+);
+
+const progress = computed(() =>
+    props.pages.length
+        ? Math.round((completedPagesCount.value / props.pages.length) * 100)
+        : 0,
+);
 
 defineOptions({
     layout: {
@@ -62,26 +74,31 @@ defineOptions({
             </Form>
         </div>
 
-        <div class="grid gap-3">
+        <div v-if="pages.length" class="flex flex-col gap-2">
+            <div
+                class="flex items-center justify-between text-sm text-muted-foreground"
+            >
+                <span>{{ completedPagesCount }} / {{ pages.length }} oldal kész</span>
+                <span>{{ progress }}%</span>
+            </div>
+            <Progress :model-value="progress" />
+        </div>
+
+        <div class="flex flex-col divide-y rounded-lg border">
             <Link
                 v-for="page in pages"
                 :key="page.id"
                 :href="
                     PageController.show([course.slug, lesson.slug, page.slug])
                 "
+                class="flex items-center justify-between gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/50"
             >
-                <Card class="transition-colors hover:border-ring">
-                    <CardHeader
-                        class="flex-row items-center justify-between space-y-0"
-                    >
-                        <CardTitle>{{ page.title }}</CardTitle>
-                        <CheckCircle2
-                            v-if="page.is_completed"
-                            class="size-5 text-green-600"
-                        />
-                        <Circle v-else class="size-5 text-muted-foreground" />
-                    </CardHeader>
-                </Card>
+                <span>{{ page.title }}</span>
+                <CheckCircle2
+                    v-if="page.is_completed"
+                    class="size-4 shrink-0 text-green-600"
+                />
+                <Circle v-else class="size-4 shrink-0 text-muted-foreground" />
             </Link>
         </div>
 

@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { CheckCircle2, Circle } from '@lucide/vue';
+import { ArrowRight } from '@lucide/vue';
 import CourseController from '@/actions/App/Http/Controllers/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/LessonController';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import PageController from '@/actions/App/Http/Controllers/PageController';
+import { Button } from '@/components/ui/button';
 
 const props = defineProps<{
     course: { title: string; slug: string; description: string | null };
-    lessons: {
-        id: number;
-        title: string;
-        slug: string;
-        is_completed: boolean;
-    }[];
+    continueTo: { lessonSlug: string; pageSlug: string | null } | null;
 }>();
 
 defineOptions({
@@ -35,25 +31,24 @@ defineOptions({
             </p>
         </div>
 
-        <div class="grid gap-3">
+        <Button v-if="continueTo" as-child class="w-fit">
             <Link
-                v-for="lesson in lessons"
-                :key="lesson.id"
-                :href="LessonController.show([props.course.slug, lesson.slug])"
+                :href="
+                    continueTo.pageSlug
+                        ? PageController.show([
+                              props.course.slug,
+                              continueTo.lessonSlug,
+                              continueTo.pageSlug,
+                          ])
+                        : LessonController.show([
+                              props.course.slug,
+                              continueTo.lessonSlug,
+                          ])
+                "
             >
-                <Card class="transition-colors hover:border-ring">
-                    <CardHeader
-                        class="flex-row items-center justify-between space-y-0"
-                    >
-                        <CardTitle>{{ lesson.title }}</CardTitle>
-                        <CheckCircle2
-                            v-if="lesson.is_completed"
-                            class="size-5 text-green-600"
-                        />
-                        <Circle v-else class="size-5 text-muted-foreground" />
-                    </CardHeader>
-                </Card>
+                Kurzus folytatása
+                <ArrowRight class="size-4" />
             </Link>
-        </div>
+        </Button>
     </div>
 </template>

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['lesson_id', 'title', 'slug', 'order'])]
+#[Fillable(['lesson_id', 'title', 'slug', 'order', 'narration_text', 'narration_audio_path'])]
 class Page extends Model
 {
     use Completable;

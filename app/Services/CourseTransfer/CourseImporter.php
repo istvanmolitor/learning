@@ -51,13 +51,16 @@ class CourseImporter
                     ]);
 
                     foreach ($lessonData['pages'] ?? [] as $pageData) {
-                        $html = $this->readFile($root.'/'.$pageData['file']);
+                        $htmlPath = $root.'/'.$pageData['file'];
+                        $html = $this->readFile($htmlPath);
                         $body = $this->rewriteImageSources($this->extractBody($html), $root, $course->id);
 
                         $page = $lesson->pages()->create([
                             'title' => $pageData['title'],
                             'slug' => $pageData['slug'],
                             'order' => $pageData['order'] ?? 0,
+                            'narration_text' => $this->readSiblingFile($htmlPath, 'txt'),
+                            'narration_audio_path' => $this->importNarrationAudio($htmlPath, $course->id),
                         ]);
 
                         $page->contentBlocks()->create([
@@ -88,6 +91,56 @@ class CourseImporter
         } finally {
             File::deleteDirectory($extractPath);
         }
+    }
+
+    /**
+     * Read narration (.txt/.mp3 sibling files) from a source directory into an already-imported
+     * course's existing Lesson/Page records, matched by slug. Does not create or delete anything,
+     * so it is safe to re-run against a course that already has enrollments/completions.
+     */
+    public function syncNarration(string $root): int
+    {
+        $manifest = json_decode($this->readFile($root.'/course.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        $course = Course::where('slug', $manifest['slug'] ?? Str::slug($manifest['title']))->first();
+
+        if (! $course) {
+            throw new RuntimeException("Nincs importált kurzus ezzel a slug-gal: {$manifest['slug']}");
+        }
+
+        $updated = 0;
+
+        foreach ($manifest['lessons'] ?? [] as $lessonData) {
+            $lesson = $course->lessons()->where('slug', $lessonData['slug'])->first();
+
+            if (! $lesson) {
+                continue;
+            }
+
+            foreach ($lessonData['pages'] ?? [] as $pageData) {
+                $page = $lesson->pages()->where('slug', $pageData['slug'])->first();
+
+                if (! $page) {
+                    continue;
+                }
+
+                $htmlPath = $root.'/'.$pageData['file'];
+
+                $changes = array_filter([
+                    'narration_text' => $this->readSiblingFile($htmlPath, 'txt'),
+                    'narration_audio_path' => $this->importNarrationAudio($htmlPath, $course->id),
+                ], fn ($value) => $value !== null);
+
+                if ($changes === []) {
+                    continue;
+                }
+
+                $page->update($changes);
+                $updated++;
+            }
+        }
+
+        return $updated;
     }
 
     private function readFile(string $path): string
@@ -127,6 +180,31 @@ class CourseImporter
         }
 
         return $slug;
+    }
+
+    private function readSiblingFile(string $htmlPath, string $extension): ?string
+    {
+        $path = preg_replace('/\.html$/i', '.'.$extension, $htmlPath);
+
+        if (! file_exists($path)) {
+            return null;
+        }
+
+        return trim($this->readFile($path)) ?: null;
+    }
+
+    private function importNarrationAudio(string $htmlPath, int $courseId): ?string
+    {
+        $path = preg_replace('/\.html$/i', '.mp3', $htmlPath);
+
+        if (! file_exists($path)) {
+            return null;
+        }
+
+        $storedPath = "course-media/{$courseId}/narration/".Str::random(12).'.mp3';
+        Storage::disk('public')->put($storedPath, $this->readFile($path));
+
+        return $storedPath;
     }
 
     private function extractBody(string $html): string

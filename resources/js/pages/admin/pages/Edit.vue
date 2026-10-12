@@ -17,6 +17,8 @@ const props = defineProps<{
         title: string;
         slug: string;
         order: number;
+        narration_text: string | null;
+        narration_audio_path: string | null;
         content_blocks: {
             id: number;
             type: string;
@@ -91,6 +93,42 @@ defineOptions({
                     :default-value="page?.order ?? 0"
                 />
                 <InputError :message="errors.order" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="narration_text">Felolvasandó szöveg (TTS)</Label>
+                <textarea
+                    id="narration_text"
+                    name="narration_text"
+                    rows="6"
+                    class="border-input focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] md:text-sm dark:bg-input/30"
+                    >{{ page?.narration_text }}</textarea
+                >
+                <InputError :message="errors.narration_text" />
+            </div>
+
+            <div class="grid gap-2">
+                <audio
+                    v-if="page?.narration_audio_path"
+                    controls
+                    class="w-full"
+                    :src="`/storage/${page.narration_audio_path}`"
+                />
+                <Label for="narration_audio"
+                    >Felolvasás mp3
+                    {{
+                        page?.narration_audio_path
+                            ? '(üresen hagyva marad a jelenlegi)'
+                            : ''
+                    }}</Label
+                >
+                <input
+                    id="narration_audio"
+                    type="file"
+                    name="narration_audio"
+                    accept="audio/mpeg,.mp3"
+                />
+                <InputError :message="errors.narration_audio" />
             </div>
 
             <Button type="submit" :disabled="processing" class="w-fit"

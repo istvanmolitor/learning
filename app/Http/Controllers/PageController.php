@@ -8,6 +8,7 @@ use App\Models\Page;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,6 +40,9 @@ class PageController extends Controller
                 'title' => $page->title,
                 'slug' => $page->slug,
                 'is_completed' => $page->isCompletedBy($request->user()),
+                'narration_audio_url' => $page->narration_audio_path
+                    ? Storage::disk('public')->url($page->narration_audio_path)
+                    : null,
             ],
             'pagination' => [
                 'index' => $currentIndex !== false ? $currentIndex + 1 : null,

@@ -54,6 +54,18 @@ class CourseExporter
                 $file = "pages/{$lesson->slug}/{$page->slug}.html";
                 $zip->addFromString("{$root}/{$file}", $this->renderPageHtml($page, $zip, $root, $usedImageNames));
 
+                if ($page->narration_text) {
+                    $zip->addFromString("{$root}/pages/{$lesson->slug}/{$page->slug}.txt", $page->narration_text);
+                }
+
+                if ($page->narration_audio_path) {
+                    $audio = Storage::disk('public')->get($page->narration_audio_path);
+
+                    if ($audio !== null) {
+                        $zip->addFromString("{$root}/pages/{$lesson->slug}/{$page->slug}.mp3", $audio);
+                    }
+                }
+
                 $lessonManifest['pages'][] = [
                     'title' => $page->title,
                     'slug' => $page->slug,

@@ -21,6 +21,9 @@ class PageRequest extends FormRequest
                 Rule::unique('pages', 'slug')->where('lesson_id', $lessonId)->ignore($page?->id),
             ],
             'order' => ['nullable', 'integer', 'min:0'],
+
+            'narration_text' => ['nullable', 'string'],
+            'narration_audio' => ['nullable', 'file', 'mimes:mp3', 'max:20480'],
         ];
     }
 }

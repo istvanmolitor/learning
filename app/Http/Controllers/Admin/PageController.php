@@ -22,7 +22,15 @@ class PageController extends Controller
 
     public function store(PageRequest $request, Lesson $lesson): RedirectResponse
     {
-        $lesson->pages()->create($request->validated());
+        $data = $request->validated();
+
+        if ($request->file('narration_audio')) {
+            $data['narration_audio_path'] = $request->file('narration_audio')
+                ->store("course-media/{$lesson->course_id}/narration", 'public');
+        }
+        unset($data['narration_audio']);
+
+        $lesson->pages()->create($data);
 
         return to_route('admin.lessons.edit', $lesson);
     }
@@ -39,7 +47,15 @@ class PageController extends Controller
 
     public function update(PageRequest $request, Page $page): RedirectResponse
     {
-        $page->update($request->validated());
+        $data = $request->validated();
+
+        if ($request->file('narration_audio')) {
+            $data['narration_audio_path'] = $request->file('narration_audio')
+                ->store("course-media/{$page->lesson->course_id}/narration", 'public');
+        }
+        unset($data['narration_audio']);
+
+        $page->update($data);
 
         return to_route('admin.lessons.edit', $page->lesson);
     }

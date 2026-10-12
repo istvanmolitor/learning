@@ -10,7 +10,12 @@ import { Button } from '@/components/ui/button';
 const props = defineProps<{
     course: { title: string; slug: string };
     lesson: { title: string; slug: string };
-    page: { title: string; slug: string; is_completed: boolean };
+    page: {
+        title: string;
+        slug: string;
+        is_completed: boolean;
+        narration_audio_url: string | null;
+    };
     pagination: {
         index: number | null;
         total: number;
@@ -73,6 +78,13 @@ defineOptions({
         </div>
 
         <h1 class="text-2xl font-semibold tracking-tight">{{ page.title }}</h1>
+
+        <audio
+            v-if="page.narration_audio_url"
+            controls
+            class="w-full"
+            :src="page.narration_audio_url"
+        />
 
         <div class="flex flex-col gap-6">
             <ContentBlock

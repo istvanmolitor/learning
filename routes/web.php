@@ -17,6 +17,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::scopeBindings()->group(function () {
         Route::get('courses/{course:slug}/lessons/{lesson:slug}', [LessonController::class, 'show'])->name('lessons.show');
         Route::post('courses/{course:slug}/lessons/{lesson:slug}/complete', [LessonController::class, 'complete'])->name('lessons.complete');
+        Route::get('courses/{course:slug}/lessons/{lesson:slug}/questions', [LessonController::class, 'questions'])->name('lessons.questions');
 
         Route::get('courses/{course:slug}/lessons/{lesson:slug}/pages/{page:slug}', [PageController::class, 'show'])->name('pages.show');
         Route::post('courses/{course:slug}/lessons/{lesson:slug}/pages/{page:slug}/complete', [PageController::class, 'complete'])->name('pages.complete');

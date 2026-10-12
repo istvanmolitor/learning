@@ -99,19 +99,20 @@ defineOptions({
             <span v-else />
 
             <Link
-                v-if="pagination.next"
                 :href="
-                    PageController.show([
-                        course.slug,
-                        lesson.slug,
-                        pagination.next.slug,
-                    ])
+                    pagination.next
+                        ? PageController.show([
+                              course.slug,
+                              lesson.slug,
+                              pagination.next.slug,
+                          ])
+                        : LessonController.questions([course.slug, lesson.slug])
                 "
                 class="flex items-center gap-1 text-sm text-muted-foreground hover:underline"
             >
-                {{ pagination.next.title }} <ChevronRight class="size-4" />
+                {{ pagination.next ? pagination.next.title : 'Teszt kérdések' }}
+                <ChevronRight class="size-4" />
             </Link>
-            <span v-else />
         </div>
     </div>
 </template>

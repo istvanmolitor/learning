@@ -26,6 +26,43 @@ class LessonController extends Controller
             'is_completed' => $page->isCompletedBy($user),
         ]);
 
+        $lessons = $course->lessons()
+            ->get()
+            ->map(fn ($lesson) => [
+                'id' => $lesson->id,
+                'title' => $lesson->title,
+                'slug' => $lesson->slug,
+                'is_completed' => $lesson->isCompletedBy($user),
+            ]);
+
+        return Inertia::render('courses/lessons/Show', [
+            'course' => ['slug' => $course->slug, 'title' => $course->title],
+            'lesson' => [
+                'title' => $lesson->title,
+                'slug' => $lesson->slug,
+                'is_completed' => $isCompleted,
+            ],
+            'lessons' => $lessons,
+            'pages' => $pages,
+        ]);
+    }
+
+    public function complete(Request $request, Course $course, Lesson $lesson): RedirectResponse
+    {
+        Gate::authorize('view', $course);
+
+        $lesson->markCompletedBy($request->user());
+
+        return back();
+    }
+
+    public function questions(Request $request, Course $course, Lesson $lesson): Response
+    {
+        Gate::authorize('view', $course);
+
+        $user = $request->user();
+        $isCompleted = $lesson->isCompletedBy($user);
+
         $questions = $isCompleted
             ? $lesson->questions->map(function ($question) use ($user) {
                 $response = $question->responses->firstWhere('user_id', $user->id);
@@ -52,7 +89,7 @@ class LessonController extends Controller
                 'is_completed' => $lesson->isCompletedBy($user),
             ]);
 
-        return Inertia::render('courses/lessons/Show', [
+        return Inertia::render('courses/lessons/questions/Show', [
             'course' => ['slug' => $course->slug, 'title' => $course->title],
             'lesson' => [
                 'title' => $lesson->title,
@@ -60,17 +97,7 @@ class LessonController extends Controller
                 'is_completed' => $isCompleted,
             ],
             'lessons' => $lessons,
-            'pages' => $pages,
             'questions' => $questions,
         ]);
-    }
-
-    public function complete(Request $request, Course $course, Lesson $lesson): RedirectResponse
-    {
-        Gate::authorize('view', $course);
-
-        $lesson->markCompletedBy($request->user());
-
-        return back();
     }
 }

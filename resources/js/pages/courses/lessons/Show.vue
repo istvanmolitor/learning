@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { CheckCircle2, Circle } from '@lucide/vue';
+import { ArrowRight, CheckCircle2, Circle } from '@lucide/vue';
 import { computed } from 'vue';
 import CourseController from '@/actions/App/Http/Controllers/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/LessonController';
 import PageController from '@/actions/App/Http/Controllers/PageController';
-import QuestionResponseController from '@/actions/App/Http/Controllers/QuestionResponseController';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
@@ -14,13 +12,6 @@ const props = defineProps<{
     course: { title: string; slug: string };
     lesson: { title: string; slug: string; is_completed: boolean };
     pages: { id: number; title: string; slug: string; is_completed: boolean }[];
-    questions: {
-        id: number;
-        text: string;
-        options: { id: number; text: string }[];
-        selected_answer_option_id: number | null;
-        is_correct: boolean | null;
-    }[];
 }>();
 
 const completedPagesCount = computed(
@@ -102,58 +93,11 @@ defineOptions({
             </Link>
         </div>
 
-        <div v-if="lesson.is_completed" class="flex flex-col gap-4">
-            <h2 class="text-lg font-semibold tracking-tight">Teszt kérdések</h2>
-
-            <Card v-for="question in questions" :key="question.id">
-                <CardHeader>
-                    <CardTitle class="text-base">{{ question.text }}</CardTitle>
-                </CardHeader>
-                <Form
-                    v-bind="
-                        QuestionResponseController.store.form([
-                            course.slug,
-                            lesson.slug,
-                            question.id,
-                        ])
-                    "
-                    class="flex flex-col gap-3 px-6 pb-6"
-                    v-slot="{ processing }"
-                >
-                    <label
-                        v-for="option in question.options"
-                        :key="option.id"
-                        class="flex items-center gap-2 text-sm"
-                    >
-                        <input
-                            type="radio"
-                            name="answer_option_id"
-                            :value="option.id"
-                            :checked="
-                                option.id === question.selected_answer_option_id
-                            "
-                            class="accent-primary"
-                        />
-                        {{ option.text }}
-                    </label>
-
-                    <div class="flex items-center gap-3">
-                        <Button type="submit" :disabled="processing" size="sm"
-                            >Válasz beküldése</Button
-                        >
-                        <span
-                            v-if="question.is_correct === true"
-                            class="text-sm text-green-600"
-                            >Helyes válasz!</span
-                        >
-                        <span
-                            v-else-if="question.is_correct === false"
-                            class="text-sm text-red-600"
-                            >Helytelen válasz.</span
-                        >
-                    </div>
-                </Form>
-            </Card>
-        </div>
+        <Button as-child variant="outline" class="w-fit">
+            <Link :href="LessonController.questions([course.slug, lesson.slug])">
+                Teszt kérdések
+                <ArrowRight class="size-4" />
+            </Link>
+        </Button>
     </div>
 </template>

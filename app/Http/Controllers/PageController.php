@@ -64,6 +64,14 @@ class PageController extends Controller
 
         $page->markCompletedBy($request->user());
 
-        return back();
+        $lessonPages = $lesson->pages()->get(['id', 'slug']);
+        $currentIndex = $lessonPages->search(fn ($lessonPage) => $lessonPage->id === $page->id);
+        $nextPage = $currentIndex !== false ? $lessonPages->get($currentIndex + 1) : null;
+
+        if ($nextPage) {
+            return redirect()->route('pages.show', [$course, $lesson, $nextPage->slug]);
+        }
+
+        return redirect()->route('lessons.questions', [$course, $lesson]);
     }
 }

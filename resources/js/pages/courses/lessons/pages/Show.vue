@@ -40,7 +40,9 @@ defineOptions({
     <Head :title="page.title" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div class="flex items-center justify-between">
+        <div
+            class="sticky top-0 z-10 -mx-4 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        >
             <div>
                 <Link
                     :href="LessonController.show([course.slug, lesson.slug])"

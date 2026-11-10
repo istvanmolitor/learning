@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import {
-    BookOpen,
-    FolderGit2,
-    GraduationCap,
-    LayoutGrid,
-    Shield,
-    Users,
-} from '@lucide/vue';
+import { BookOpen, FolderGit2, GraduationCap, Shield, Users } from '@lucide/vue';
 import { computed } from 'vue';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
@@ -24,7 +17,6 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
 import { index as coursesIndex } from '@/routes/courses';
 import type { NavItem } from '@/types';
 
@@ -32,11 +24,6 @@ const page = usePage();
 const isAdmin = computed(() => page.props.auth.user.is_admin);
 
 const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
     {
         title: 'Kurzusaim',
         href: coursesIndex(),
@@ -77,7 +64,7 @@ const footerNavItems: NavItem[] = [
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="dashboard()">
+                        <Link :href="coursesIndex()">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>

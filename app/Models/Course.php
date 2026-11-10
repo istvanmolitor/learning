@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['title', 'slug', 'description', 'is_published', 'order'])]
+#[Fillable(['title', 'slug', 'description', 'thumbnail', 'is_published', 'order'])]
 class Course extends Model
 {
     protected function casts(): array

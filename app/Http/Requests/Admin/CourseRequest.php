@@ -20,6 +20,8 @@ class CourseRequest extends FormRequest
                 Rule::unique('courses', 'slug')->ignore($course?->id),
             ],
             'description' => ['nullable', 'string'],
+            'thumbnail' => ['nullable', 'image', 'max:2048'],
+            'remove_thumbnail' => ['nullable', 'boolean'],
             'is_published' => ['boolean'],
             'order' => ['nullable', 'integer', 'min:0'],
         ];

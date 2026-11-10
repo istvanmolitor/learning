@@ -22,6 +22,7 @@ const props = defineProps<{
         id: number;
         title: string;
         slug: string;
+        thumbnail: string | null;
         is_published: boolean;
         lessons_count: number;
     }[];
@@ -139,7 +140,14 @@ defineOptions({
                     :key="course.id"
                     class="flex flex-wrap items-center gap-4 p-4 transition-colors hover:bg-muted/40"
                 >
+                    <img
+                        v-if="course.thumbnail"
+                        :src="`/storage/${course.thumbnail}`"
+                        :alt="course.title"
+                        class="size-10 shrink-0 rounded-lg object-cover"
+                    />
                     <div
+                        v-else
                         class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary"
                     >
                         {{ course.title.charAt(0).toUpperCase() }}

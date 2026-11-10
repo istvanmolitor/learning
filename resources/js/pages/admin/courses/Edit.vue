@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { BookOpen, GraduationCap, Plus } from '@lucide/vue';
+import { ref } from 'vue';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/Admin/LessonController';
 import AdminHeader from '@/components/admin/AdminHeader.vue';
@@ -17,6 +18,7 @@ const props = defineProps<{
         title: string;
         slug: string;
         description: string | null;
+        thumbnail: string | null;
         is_published: boolean;
         order: number;
         lessons: { id: number; title: string; order: number }[];
@@ -30,6 +32,17 @@ defineOptions({
         ],
     },
 });
+
+const thumbnailPreview = ref<string | null>(
+    props.course?.thumbnail ? `/storage/${props.course.thumbnail}` : null,
+);
+const removeThumbnail = ref(false);
+
+function onThumbnailChange(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    thumbnailPreview.value = file ? URL.createObjectURL(file) : null;
+    removeThumbnail.value = false;
+}
 </script>
 
 <template>
@@ -98,6 +111,43 @@ defineOptions({
                             >{{ course?.description }}</textarea
                         >
                         <InputError :message="errors.description" />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="thumbnail">Borítókép</Label>
+                        <div class="flex items-center gap-4">
+                            <img
+                                v-if="thumbnailPreview && !removeThumbnail"
+                                :src="thumbnailPreview"
+                                alt=""
+                                class="size-20 shrink-0 rounded-lg border border-input object-cover"
+                            />
+                            <Input
+                                id="thumbnail"
+                                type="file"
+                                name="thumbnail"
+                                accept="image/*"
+                                class="max-w-xs"
+                                @change="onThumbnailChange"
+                            />
+                        </div>
+                        <InputError :message="errors.thumbnail" />
+                        <label
+                            v-if="course?.thumbnail"
+                            class="flex w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground"
+                        >
+                            <input
+                                type="hidden"
+                                name="remove_thumbnail"
+                                value="0"
+                            />
+                            <Checkbox
+                                name="remove_thumbnail"
+                                value="1"
+                                v-model="removeThumbnail"
+                            />
+                            Borítókép eltávolítása
+                        </label>
                     </div>
 
                     <div class="grid gap-2 sm:w-40">

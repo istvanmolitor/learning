@@ -9,6 +9,7 @@ use App\Models\Course;
 use App\Services\CourseTransfer\CourseExporter;
 use App\Services\CourseTransfer\CourseImporter;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -31,7 +32,13 @@ class CourseController extends Controller
 
     public function store(CourseRequest $request): RedirectResponse
     {
-        Course::create($request->validated());
+        $data = $request->safe()->except(['thumbnail', 'remove_thumbnail']);
+
+        if ($request->hasFile('thumbnail')) {
+            $data['thumbnail'] = $request->file('thumbnail')->store('course-thumbnails', 'public');
+        }
+
+        Course::create($data);
 
         return to_route('admin.courses.index');
     }
@@ -47,13 +54,33 @@ class CourseController extends Controller
 
     public function update(CourseRequest $request, Course $course): RedirectResponse
     {
-        $course->update($request->validated());
+        $data = $request->safe()->except(['thumbnail', 'remove_thumbnail']);
+
+        if ($request->hasFile('thumbnail')) {
+            if ($course->thumbnail) {
+                Storage::disk('public')->delete($course->thumbnail);
+            }
+
+            $data['thumbnail'] = $request->file('thumbnail')->store('course-thumbnails', 'public');
+        } elseif ($request->boolean('remove_thumbnail')) {
+            if ($course->thumbnail) {
+                Storage::disk('public')->delete($course->thumbnail);
+            }
+
+            $data['thumbnail'] = null;
+        }
+
+        $course->update($data);
 
         return to_route('admin.courses.index');
     }
 
     public function destroy(Course $course): RedirectResponse
     {
+        if ($course->thumbnail) {
+            Storage::disk('public')->delete($course->thumbnail);
+        }
+
         $course->delete();
 
         return to_route('admin.courses.index');

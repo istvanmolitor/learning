@@ -18,13 +18,15 @@ class EnrollmentController extends Controller
             'assigned_at' => now(),
         ]);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.show', $user);
     }
 
     public function destroy(Enrollment $enrollment): RedirectResponse
     {
+        $userId = $enrollment->user_id;
+
         $enrollment->delete();
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.show', $userId);
     }
 }

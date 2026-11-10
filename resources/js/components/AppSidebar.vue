@@ -34,7 +34,10 @@ const mainNavItems: NavItem[] = [
 const adminNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [];
 
-    if (permissions.value.includes('manage-courses')) {
+    if (
+        permissions.value.includes('manage-courses') ||
+        permissions.value.includes('create-courses')
+    ) {
         items.push({
             title: 'Kurzusok',
             href: CourseController.index(),

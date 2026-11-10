@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['title', 'slug', 'description', 'thumbnail', 'is_published', 'order'])]
+#[Fillable(['title', 'slug', 'description', 'thumbnail', 'is_published', 'order', 'created_by'])]
 class Course extends Model
 {
     protected function casts(): array
@@ -15,6 +16,16 @@ class Course extends Model
         return [
             'is_published' => 'boolean',
         ];
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function wasCreatedBy(User $user): bool
+    {
+        return $this->created_by === $user->id;
     }
 
     public function lessons(): HasMany

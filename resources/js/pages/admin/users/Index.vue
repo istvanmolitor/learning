@@ -1,56 +1,102 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
-import { GraduationCap, ShieldCheck, Users, X } from '@lucide/vue';
-import { computed } from 'vue';
-import EnrollmentController from '@/actions/App/Http/Controllers/Admin/EnrollmentController';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { useDebounceFn } from '@vueuse/core';
+import {
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
+    ChevronLeft,
+    ChevronRight,
+    GraduationCap,
+    ShieldCheck,
+    Users,
+} from '@lucide/vue';
+import { ref } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import AdminHeader from '@/components/admin/AdminHeader.vue';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { useInitials } from '@/composables/useInitials';
+
+type UserRow = {
+    id: number;
+    name: string;
+    email: string;
+    created_at: string;
+    groups: { id: number; name: string }[];
+    courses_count: number;
+};
 
 const props = defineProps<{
     users: {
-        id: number;
-        name: string;
-        email: string;
-        groups: { id: number; name: string }[];
-        courses: {
-            id: number;
-            title: string;
-            pivot: { id: number };
-        }[];
-    }[];
-    courses: { id: number; title: string }[];
+        data: UserRow[];
+        current_page: number;
+        last_page: number;
+        from: number | null;
+        to: number | null;
+        total: number;
+    };
+    filters: {
+        search: string;
+        sort: string;
+        direction: 'asc' | 'desc';
+    };
 }>();
 
 const { getInitials } = useInitials();
 
-function isAdmin(user: (typeof props.users)[number]) {
+const search = ref(props.filters.search);
+
+function isAdmin(user: UserRow) {
     return user.groups.some((group) => group.name === 'admin');
 }
 
-const adminCount = computed(
-    () => props.users.filter((user) => isAdmin(user)).length,
-);
+function visit(params: Record<string, string | number>) {
+    router.get(
+        UserController.index.url({
+            query: {
+                search: props.filters.search,
+                sort: props.filters.sort,
+                direction: props.filters.direction,
+                ...params,
+            },
+        }),
+        {},
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
+}
 
-const totalEnrollments = computed(() =>
-    props.users.reduce((sum, user) => sum + user.courses.length, 0),
-);
+const runSearch = useDebounceFn((value: string) => {
+    visit({ search: value, page: 1 });
+}, 300);
 
-function availableCourses(user: (typeof props.users)[number]) {
-    const enrolledIds = new Set(user.courses.map((course) => course.id));
+function onSearchInput() {
+    runSearch(search.value);
+}
 
-    return props.courses.filter((course) => !enrolledIds.has(course.id));
+function sortBy(column: string) {
+    const direction =
+        props.filters.sort === column && props.filters.direction === 'asc'
+            ? 'desc'
+            : 'asc';
+
+    visit({ sort: column, direction, page: 1 });
+}
+
+function goToPage(page: number) {
+    visit({ page });
 }
 
 defineOptions({
@@ -72,143 +118,196 @@ defineOptions({
             description="Kezeld a felhasználókat és a kurzus hozzárendeléseket."
         />
 
-        <div class="grid gap-4 sm:grid-cols-3">
-            <Card class="flex-row items-center gap-4 px-5 py-4">
-                <div
-                    class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
-                >
-                    <Users class="size-5" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold leading-none">
-                        {{ users.length }}
-                    </p>
-                    <p class="text-xs text-muted-foreground">Felhasználó</p>
-                </div>
-            </Card>
-            <Card class="flex-row items-center gap-4 px-5 py-4">
-                <div
-                    class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                >
-                    <ShieldCheck class="size-5" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold leading-none">
-                        {{ adminCount }}
-                    </p>
-                    <p class="text-xs text-muted-foreground">Admin</p>
-                </div>
-            </Card>
-            <Card class="flex-row items-center gap-4 px-5 py-4">
-                <div
-                    class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                >
-                    <GraduationCap class="size-5" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold leading-none">
-                        {{ totalEnrollments }}
-                    </p>
-                    <p class="text-xs text-muted-foreground">
-                        Kurzus hozzárendelés
-                    </p>
-                </div>
-            </Card>
-        </div>
+        <Card class="p-0">
+            <div class="flex items-center gap-2 border-b p-4">
+                <Input
+                    v-model="search"
+                    type="search"
+                    placeholder="Keresés név vagy email alapján…"
+                    class="max-w-sm"
+                    @input="onSearchInput"
+                />
+            </div>
 
-        <div class="flex flex-col gap-4">
-            <Card
-                v-for="user in users"
-                :key="user.id"
-                class="gap-4 p-5"
-            >
-                <div class="flex items-center gap-3">
-                    <Avatar class="size-10">
-                        <AvatarFallback
-                            class="bg-primary/10 font-semibold text-primary"
-                        >
-                            {{ getInitials(user.name) }}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div class="min-w-0 flex-1">
-                        <p class="flex items-center gap-2 font-medium">
-                            {{ user.name }}
-                            <Badge
-                                v-for="group in user.groups"
-                                :key="group.id"
-                                :class="
-                                    group.name === 'admin'
-                                        ? 'gap-1 border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400'
-                                        : 'gap-1 border-transparent bg-muted text-muted-foreground'
-                                "
-                            >
-                                <ShieldCheck
-                                    v-if="group.name === 'admin'"
-                                    class="size-3"
-                                />
-                                {{ group.name }}
-                            </Badge>
-                        </p>
-                        <p class="truncate text-sm text-muted-foreground">
-                            {{ user.email }}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2">
-                    <Badge
-                        v-for="course in user.courses"
-                        :key="course.id"
-                        variant="secondary"
-                        class="gap-1.5 py-1.5 pr-1.5 pl-2.5"
-                    >
-                        {{ course.title }}
-                        <Form
-                            v-bind="
-                                EnrollmentController.destroy.form(
-                                    course.pivot.id,
-                                )
-                            "
-                        >
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>
                             <button
-                                type="submit"
-                                class="rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-destructive"
+                                type="button"
+                                class="inline-flex items-center gap-1 hover:text-primary"
+                                @click="sortBy('name')"
                             >
-                                <X class="size-3" />
+                                Név
+                                <ArrowUp
+                                    v-if="
+                                        filters.sort === 'name' &&
+                                        filters.direction === 'asc'
+                                    "
+                                    class="size-3.5"
+                                />
+                                <ArrowDown
+                                    v-else-if="filters.sort === 'name'"
+                                    class="size-3.5"
+                                />
+                                <ArrowUpDown
+                                    v-else
+                                    class="size-3.5 text-muted-foreground"
+                                />
                             </button>
-                        </Form>
-                    </Badge>
-
-                    <Form
-                        v-if="availableCourses(user).length > 0"
-                        v-bind="EnrollmentController.store.form(user.id)"
-                        class="flex items-center gap-2"
-                    >
-                        <Select
-                            name="course_id"
-                            :default-value="
-                                String(availableCourses(user)[0]?.id)
-                            "
-                        >
-                            <SelectTrigger size="sm" class="w-48">
-                                <SelectValue placeholder="Válassz kurzust" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem
-                                    v-for="course in availableCourses(user)"
-                                    :key="course.id"
-                                    :value="String(course.id)"
+                        </TableHead>
+                        <TableHead>
+                            <button
+                                type="button"
+                                class="inline-flex items-center gap-1 hover:text-primary"
+                                @click="sortBy('email')"
+                            >
+                                Email
+                                <ArrowUp
+                                    v-if="
+                                        filters.sort === 'email' &&
+                                        filters.direction === 'asc'
+                                    "
+                                    class="size-3.5"
+                                />
+                                <ArrowDown
+                                    v-else-if="filters.sort === 'email'"
+                                    class="size-3.5"
+                                />
+                                <ArrowUpDown
+                                    v-else
+                                    class="size-3.5 text-muted-foreground"
+                                />
+                            </button>
+                        </TableHead>
+                        <TableHead>Csoportok</TableHead>
+                        <TableHead>Kurzusok</TableHead>
+                        <TableHead>
+                            <button
+                                type="button"
+                                class="inline-flex items-center gap-1 hover:text-primary"
+                                @click="sortBy('created_at')"
+                            >
+                                Regisztrált
+                                <ArrowUp
+                                    v-if="
+                                        filters.sort === 'created_at' &&
+                                        filters.direction === 'asc'
+                                    "
+                                    class="size-3.5"
+                                />
+                                <ArrowDown
+                                    v-else-if="filters.sort === 'created_at'"
+                                    class="size-3.5"
+                                />
+                                <ArrowUpDown
+                                    v-else
+                                    class="size-3.5 text-muted-foreground"
+                                />
+                            </button>
+                        </TableHead>
+                        <TableHead />
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableEmpty v-if="users.data.length === 0" :colspan="6">
+                        Nincs a keresésnek megfelelő felhasználó.
+                    </TableEmpty>
+                    <TableRow v-for="user in users.data" :key="user.id">
+                        <TableCell>
+                            <Link
+                                :href="UserController.show(user.id)"
+                                class="flex items-center gap-3 hover:underline"
+                            >
+                                <Avatar class="size-8">
+                                    <AvatarFallback
+                                        class="bg-primary/10 text-xs font-semibold text-primary"
+                                    >
+                                        {{ getInitials(user.name) }}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <span class="font-medium">{{
+                                    user.name
+                                }}</span>
+                            </Link>
+                        </TableCell>
+                        <TableCell class="text-muted-foreground">
+                            {{ user.email }}
+                        </TableCell>
+                        <TableCell>
+                            <div class="flex flex-wrap gap-1">
+                                <Badge
+                                    v-for="group in user.groups"
+                                    :key="group.id"
+                                    :class="
+                                        group.name === 'admin'
+                                            ? 'gap-1 border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                                            : 'gap-1 border-transparent bg-muted text-muted-foreground'
+                                    "
                                 >
-                                    {{ course.title }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Button type="submit" size="sm" variant="outline"
-                            >Hozzárendelés</Button
-                        >
-                    </Form>
+                                    <ShieldCheck
+                                        v-if="isAdmin(user)"
+                                        class="size-3"
+                                    />
+                                    {{ group.name }}
+                                </Badge>
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant="outline" class="gap-1">
+                                <GraduationCap class="size-3" />
+                                {{ user.courses_count }}
+                            </Badge>
+                        </TableCell>
+                        <TableCell class="text-muted-foreground">
+                            {{
+                                new Date(user.created_at).toLocaleDateString(
+                                    'hu-HU',
+                                )
+                            }}
+                        </TableCell>
+                        <TableCell>
+                            <Link :href="UserController.show(user.id)">
+                                <Button variant="outline" size="sm"
+                                    >Profil</Button
+                                >
+                            </Link>
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+
+            <div
+                v-if="users.last_page > 1"
+                class="flex items-center justify-between border-t p-4"
+            >
+                <p class="text-sm text-muted-foreground">
+                    {{ users.from }}–{{ users.to }} / {{ users.total }}
+                </p>
+                <div class="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="users.current_page <= 1"
+                        @click="goToPage(users.current_page - 1)"
+                    >
+                        <ChevronLeft class="size-4" />
+                        Előző
+                    </Button>
+                    <span class="text-sm text-muted-foreground">
+                        {{ users.current_page }} / {{ users.last_page }}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="users.current_page >= users.last_page"
+                        @click="goToPage(users.current_page + 1)"
+                    >
+                        Következő
+                        <ChevronRight class="size-4" />
+                    </Button>
                 </div>
-            </Card>
-        </div>
+            </div>
+        </Card>
     </div>
 </template>

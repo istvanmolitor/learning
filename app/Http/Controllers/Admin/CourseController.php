@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CourseImportRequest;
 use App\Http\Requests\Admin\CourseRequest;
 use App\Models\Course;
+use App\Models\User;
 use App\Services\CourseTransfer\CourseExporter;
 use App\Services\CourseTransfer\CourseImporter;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,15 +19,29 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CourseController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        Gate::authorize('viewAny', Course::class);
+
+        $courses = Course::query()
+            ->when(
+                ! $request->user()->hasPermission('manage-courses'),
+                fn ($query) => $query->where('created_by', $request->user()->id),
+            )
+            ->orderBy('order')
+            ->withCount('lessons')
+            ->with('creator')
+            ->get();
+
         return Inertia::render('admin/courses/Index', [
-            'courses' => Course::query()->orderBy('order')->withCount('lessons')->get(),
+            'courses' => $courses,
         ]);
     }
 
     public function create(): Response
     {
+        Gate::authorize('create', Course::class);
+
         return Inertia::render('admin/courses/Edit', [
             'course' => null,
         ]);
@@ -32,28 +49,53 @@ class CourseController extends Controller
 
     public function store(CourseRequest $request): RedirectResponse
     {
+        Gate::authorize('create', Course::class);
+
         $data = $request->safe()->except(['thumbnail', 'remove_thumbnail']);
+        $data['created_by'] = $request->user()->id;
 
         if ($request->hasFile('thumbnail')) {
             $data['thumbnail'] = $request->file('thumbnail')->store('course-thumbnails', 'public');
         }
 
-        Course::create($data);
+        $course = Course::create($data);
 
-        return to_route('admin.courses.index');
+        return to_route('admin.courses.edit', $course);
     }
 
     public function edit(Course $course): Response
     {
-        $course->load('lessons');
+        Gate::authorize('update', $course);
+
+        $course->load('lessons', 'creator');
+        $canManageEnrollments = Gate::allows('manageEnrollments', $course);
+
+        $enrolledUsers = [];
+        $availableUsers = [];
+
+        if ($canManageEnrollments) {
+            $course->load(['enrolledUsers' => fn ($query) => $query->orderBy('name')]);
+            $enrolledUsers = $course->enrolledUsers;
+            $availableUsers = User::query()
+                ->whereDoesntHave('courses', fn ($query) => $query->where('course_id', $course->id))
+                ->orderBy('name')
+                ->get(['id', 'name', 'email']);
+        }
 
         return Inertia::render('admin/courses/Edit', [
-            'course' => $course,
+            'course' => [
+                ...$course->toArray(),
+                'enrolledUsers' => $enrolledUsers,
+                'availableUsers' => $availableUsers,
+            ],
+            'canManageEnrollments' => $canManageEnrollments,
         ]);
     }
 
     public function update(CourseRequest $request, Course $course): RedirectResponse
     {
+        Gate::authorize('update', $course);
+
         $data = $request->safe()->except(['thumbnail', 'remove_thumbnail']);
 
         if ($request->hasFile('thumbnail')) {
@@ -95,7 +137,9 @@ class CourseController extends Controller
 
     public function import(CourseImportRequest $request, CourseImporter $importer): RedirectResponse
     {
-        $course = $importer->import($request->file('archive'));
+        Gate::authorize('create', Course::class);
+
+        $course = $importer->import($request->file('archive'), $request->user()->id);
 
         return to_route('admin.courses.edit', $course);
     }

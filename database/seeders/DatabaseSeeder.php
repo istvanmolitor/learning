@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
     {
         $permissions = collect([
             ['name' => 'manage-courses', 'description' => 'Kurzusok, leckék és tartalmak kezelése'],
+            ['name' => 'create-courses', 'description' => 'Új kurzus létrehozása'],
             ['name' => 'manage-users', 'description' => 'Felhasználók és kurzus hozzárendelések kezelése'],
             ['name' => 'manage-groups', 'description' => 'Felhasználói csoportok és jogosultságok kezelése'],
         ])->map(fn (array $permission) => Permission::create($permission));
@@ -47,6 +48,7 @@ class DatabaseSeeder extends Seeder
             'description' => 'Egy rövid, demonstrációs kurzus a HTML, CSS és JavaScript alapjairól.',
             'is_published' => true,
             'order' => 0,
+            'created_by' => $admin->id,
         ]);
 
         $lesson1 = $course->lessons()->create([

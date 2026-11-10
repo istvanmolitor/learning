@@ -17,7 +17,7 @@ class CourseImporter
     /**
      * Import a course export zip and create the Course/Lesson/Page/ContentBlock/Question records.
      */
-    public function import(UploadedFile $file): Course
+    public function import(UploadedFile $file, ?int $createdBy = null): Course
     {
         $extractPath = storage_path('app/tmp/course-import-'.Str::random(12));
 
@@ -34,13 +34,14 @@ class CourseImporter
             $root = $this->locateCourseRoot($extractPath);
             $manifest = json_decode($this->readFile($root.'/course.json'), true, flags: JSON_THROW_ON_ERROR);
 
-            return DB::transaction(function () use ($manifest, $root) {
+            return DB::transaction(function () use ($manifest, $root, $createdBy) {
                 $course = Course::create([
                     'title' => $manifest['title'],
                     'slug' => $this->uniqueCourseSlug($manifest['slug'] ?? Str::slug($manifest['title'])),
                     'description' => $manifest['description'] ?? null,
                     'is_published' => $manifest['is_published'] ?? false,
                     'order' => $manifest['order'] ?? 0,
+                    'created_by' => $createdBy,
                 ]);
 
                 foreach ($manifest['lessons'] ?? [] as $lessonData) {

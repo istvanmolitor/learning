@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import {
     BookOpenCheck,
     Download,
@@ -25,8 +25,16 @@ const props = defineProps<{
         thumbnail: string | null;
         is_published: boolean;
         lessons_count: number;
+        created_by: number | null;
+        creator: { id: number; name: string } | null;
     }[];
 }>();
+
+const page = usePage();
+const permissions = computed(() => page.props.auth.permissions);
+const canManageAllCourses = computed(() =>
+    permissions.value.includes('manage-courses'),
+);
 
 const publishedCount = computed(
     () => props.courses.filter((course) => course.is_published).length,
@@ -157,6 +165,9 @@ defineOptions({
                         <p class="truncate font-medium">{{ course.title }}</p>
                         <p class="truncate text-xs text-muted-foreground">
                             /{{ course.slug }}
+                            <span v-if="course.creator">
+                                · létrehozta: {{ course.creator.name }}</span
+                            >
                         </p>
                     </div>
 
@@ -182,13 +193,17 @@ defineOptions({
                                 Szerkesztés
                             </Button>
                         </Link>
-                        <a :href="CourseController.export(course.id).url">
+                        <a
+                            v-if="canManageAllCourses"
+                            :href="CourseController.export(course.id).url"
+                        >
                             <Button variant="ghost" size="sm">
                                 <Download class="size-3.5" />
                                 Export
                             </Button>
                         </a>
                         <Form
+                            v-if="canManageAllCourses"
                             v-bind="
                                 CourseController.destroy.form(course.id)
                             "

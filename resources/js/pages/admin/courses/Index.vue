@@ -12,7 +12,6 @@ import {
 import { computed } from 'vue';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
 import AdminHeader from '@/components/admin/AdminHeader.vue';
-import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -62,29 +61,21 @@ defineOptions({
             title="Kurzusok"
             description="Hozd létre és kezeld a platform kurzusait, leckéit és tartalmát."
         >
-            <Form
-                v-bind="CourseController.import.form()"
-                v-slot="{ errors, processing }"
-                class="flex items-center gap-2"
-            >
-                <label
-                    class="flex h-9 cursor-pointer items-center gap-2 rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                >
+            <Link :href="CourseController.importCreate()">
+                <Button variant="outline">
                     <UploadCloud class="size-4" />
                     Importálás
-                    <input
-                        type="file"
-                        name="archive"
-                        accept=".zip,application/zip"
-                        required
-                        class="hidden"
-                    />
-                </label>
-                <Button type="submit" variant="outline" :disabled="processing"
-                    >Feltöltés</Button
-                >
-                <InputError :message="errors.archive" />
-            </Form>
+                </Button>
+            </Link>
+            <Link
+                v-if="canManageAllCourses"
+                :href="CourseController.exportIndex()"
+            >
+                <Button variant="outline">
+                    <Download class="size-4" />
+                    Export
+                </Button>
+            </Link>
             <Link :href="CourseController.create()">
                 <Button>Új kurzus</Button>
             </Link>
@@ -193,15 +184,6 @@ defineOptions({
                                 Szerkesztés
                             </Button>
                         </Link>
-                        <a
-                            v-if="canManageAllCourses"
-                            :href="CourseController.export(course.id).url"
-                        >
-                            <Button variant="ghost" size="sm">
-                                <Download class="size-3.5" />
-                                Export
-                            </Button>
-                        </a>
                         <Form
                             v-if="canManageAllCourses"
                             v-bind="

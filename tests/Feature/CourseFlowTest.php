@@ -40,7 +40,24 @@ class CourseFlowTest extends TestCase
 
         $this->assertNotNull($course);
         $this->assertSame($creator->id, $course->created_by);
+        $this->assertTrue($course->isEnrolledBy($creator), 'A létrehozónak automatikusan megjelennie a saját kurzusai között.');
         $response->assertRedirect("/admin/courses/{$course->id}/edit");
+    }
+
+    public function test_created_course_appears_on_the_creators_own_courses_page(): void
+    {
+        $creator = $this->creatorUser();
+
+        $this->actingAs($creator)->post('/admin/courses', [
+            'title' => 'Saját lista teszt',
+            'slug' => 'sajat-lista-teszt',
+            'is_published' => '0',
+            'order' => 0,
+        ]);
+
+        $this->actingAs($creator)
+            ->get('/courses')
+            ->assertInertia(fn ($page) => $page->has('courses', 1));
     }
 
     public function test_create_courses_only_user_cannot_update_a_course_they_did_not_create(): void
@@ -83,6 +100,24 @@ class CourseFlowTest extends TestCase
 
         $this->actingAs($creator)
             ->post("/admin/courses/{$otherCourse->id}/enrollments", ['user_id' => $student->id])
+            ->assertForbidden();
+    }
+
+    public function test_create_courses_only_user_can_view_the_import_page(): void
+    {
+        $creator = $this->creatorUser();
+
+        $this->actingAs($creator)
+            ->get('/admin/courses/import')
+            ->assertOk();
+    }
+
+    public function test_create_courses_only_user_cannot_view_the_export_page(): void
+    {
+        $creator = $this->creatorUser();
+
+        $this->actingAs($creator)
+            ->get('/admin/courses/export')
             ->assertForbidden();
     }
 }

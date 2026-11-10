@@ -60,6 +60,12 @@ class CourseController extends Controller
 
         $course = Course::create($data);
 
+        $course->enrollments()->create([
+            'user_id' => $request->user()->id,
+            'assigned_by' => $request->user()->id,
+            'assigned_at' => now(),
+        ]);
+
         return to_route('admin.courses.edit', $course);
     }
 
@@ -128,6 +134,17 @@ class CourseController extends Controller
         return to_route('admin.courses.index');
     }
 
+    public function exportIndex(): Response
+    {
+        $courses = Course::query()
+            ->orderBy('order')
+            ->get(['id', 'title', 'slug']);
+
+        return Inertia::render('admin/courses/Export', [
+            'courses' => $courses,
+        ]);
+    }
+
     public function export(Course $course, CourseExporter $exporter): BinaryFileResponse
     {
         $path = $exporter->export($course);
@@ -135,11 +152,22 @@ class CourseController extends Controller
         return response()->download($path, $course->slug.'.zip')->deleteFileAfterSend();
     }
 
+    public function importCreate(): Response
+    {
+        Gate::authorize('create', Course::class);
+
+        return Inertia::render('admin/courses/Import');
+    }
+
     public function import(CourseImportRequest $request, CourseImporter $importer): RedirectResponse
     {
         Gate::authorize('create', Course::class);
 
-        $course = $importer->import($request->file('archive'), $request->user()->id);
+        $course = match (true) {
+            $request->hasFile('archive') => $importer->import($request->file('archive'), $request->user()->id),
+            $request->hasFile('files') => $importer->importMarkdownFiles($request->file('files'), $request->user()->id),
+            default => $importer->importManifestFile($request->file('manifest'), $request->user()->id),
+        };
 
         return to_route('admin.courses.edit', $course);
     }

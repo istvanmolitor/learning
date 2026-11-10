@@ -8,11 +8,19 @@ use App\Models\Course;
 use App\Models\Page;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use League\HTMLToMarkdown\HtmlConverter;
 use RuntimeException;
 use ZipArchive;
 
 class CourseExporter
 {
+    private readonly HtmlConverter $htmlConverter;
+
+    public function __construct()
+    {
+        $this->htmlConverter = new HtmlConverter(['strip_tags' => false]);
+    }
+
     /**
      * Build a course export zip and return the path to the generated file.
      */
@@ -51,8 +59,8 @@ class CourseExporter
             ];
 
             foreach ($lesson->pages as $page) {
-                $file = "pages/{$lesson->slug}/{$page->slug}.html";
-                $zip->addFromString("{$root}/{$file}", $this->renderPageHtml($page, $zip, $root, $usedImageNames));
+                $file = "pages/{$lesson->slug}/{$page->slug}.md";
+                $zip->addFromString("{$root}/{$file}", $this->renderPageMarkdown($page, $zip, $root, $usedImageNames));
 
                 if ($page->narration_text) {
                     $zip->addFromString("{$root}/pages/{$lesson->slug}/{$page->slug}.txt", $page->narration_text);
@@ -102,18 +110,14 @@ class CourseExporter
     /**
      * @param  string[]  $usedImageNames
      */
-    private function renderPageHtml(Page $page, ZipArchive $zip, string $root, array &$usedImageNames): string
+    private function renderPageMarkdown(Page $page, ZipArchive $zip, string $root, array &$usedImageNames): string
     {
         $parts = [];
 
         foreach ($page->contentBlocks as $block) {
             $parts[] = match ($block->type) {
-                ContentBlockType::Heading => sprintf(
-                    '<h%1$d>%2$s</h%1$d>',
-                    (int) ($block->data['level'] ?? 2),
-                    e($block->data['text'] ?? '')
-                ),
-                ContentBlockType::TextBlock => $block->data['html'] ?? '',
+                ContentBlockType::Heading => str_repeat('#', max(1, min(6, (int) ($block->data['level'] ?? 2)))).' '.($block->data['text'] ?? ''),
+                ContentBlockType::TextBlock => trim($this->htmlConverter->convert($block->data['html'] ?? '')),
                 ContentBlockType::Image => $this->renderImageBlock($block, $zip, $root, $usedImageNames),
                 ContentBlockType::YoutubeVideo => sprintf(
                     '<iframe width="560" height="315" src="https://www.youtube.com/embed/%s" title="%s" frameborder="0" allowfullscreen></iframe>',
@@ -123,19 +127,7 @@ class CourseExporter
             };
         }
 
-        $body = implode("\n", array_filter($parts, fn ($part) => $part !== ''));
-
-        $title = e($page->title);
-
-        return <<<HTML
-        <!doctype html>
-        <html lang="hu">
-        <head><meta charset="utf-8"><title>{$title}</title></head>
-        <body>
-        {$body}
-        </body>
-        </html>
-        HTML;
+        return implode("\n\n", array_filter($parts, fn ($part) => $part !== ''));
     }
 
     /**

@@ -19,6 +19,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
     Route::get('courses/create', [CourseController::class, 'create'])->name('courses.create');
     Route::post('courses', [CourseController::class, 'store'])->name('courses.store');
+    Route::get('courses/import', [CourseController::class, 'importCreate'])->name('courses.import.create');
     Route::post('courses/import', [CourseController::class, 'import'])->name('courses.import');
     Route::get('courses/{course}/edit', [CourseController::class, 'edit'])->name('courses.edit');
     Route::match(['put', 'patch'], 'courses/{course}', [CourseController::class, 'update'])->name('courses.update');
@@ -29,6 +30,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::delete('courses/{course}/enrollments/{enrollment}', [CourseEnrollmentController::class, 'destroy'])->name('courses.enrollments.destroy');
 
     Route::middleware('permission:manage-courses')->group(function () {
+        Route::get('courses/export', [CourseController::class, 'exportIndex'])->name('courses.export.index');
         Route::get('courses/{course}/export', [CourseController::class, 'export'])->name('courses.export');
         Route::delete('courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
         Route::resource('courses.lessons', LessonController::class)->shallow()->except(['show', 'index']);

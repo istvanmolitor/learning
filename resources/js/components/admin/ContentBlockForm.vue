@@ -7,6 +7,13 @@ import RichTextEditor from '@/components/admin/RichTextEditor.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 const props = defineProps<{
     action: RouteFormDefinition<'post' | 'put'>;
@@ -25,21 +32,22 @@ const html = ref(props.block?.data.html ?? '');
 <template>
     <Form
         v-bind="action"
-        class="flex flex-col gap-3 rounded-md border border-sidebar-border/70 p-4 dark:border-sidebar-border"
+        class="flex flex-col gap-4"
         v-slot="{ errors, processing }"
     >
         <div class="grid gap-2">
             <Label>Típus</Label>
-            <select
-                v-model="type"
-                name="type"
-                class="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            >
-                <option value="heading">Címsor</option>
-                <option value="text">Szövegblokk</option>
-                <option value="image">Kép</option>
-                <option value="youtube_video">YouTube videó</option>
-            </select>
+            <Select v-model="type" name="type">
+                <SelectTrigger class="w-full sm:w-56">
+                    <SelectValue placeholder="Válassz típust" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="heading">Címsor</SelectItem>
+                    <SelectItem value="text">Szövegblokk</SelectItem>
+                    <SelectItem value="image">Kép</SelectItem>
+                    <SelectItem value="youtube_video">YouTube videó</SelectItem>
+                </SelectContent>
+            </Select>
             <InputError :message="errors.type" />
         </div>
 
@@ -49,7 +57,7 @@ const html = ref(props.block?.data.html ?? '');
                 <Input name="text" :default-value="block?.data.text" required />
                 <InputError :message="errors.text" />
             </div>
-            <div class="grid gap-2">
+            <div class="grid gap-2 sm:w-32">
                 <Label>Szint (1-6)</Label>
                 <Input
                     type="number"
@@ -75,7 +83,7 @@ const html = ref(props.block?.data.html ?? '');
             <img
                 v-if="block?.data.path"
                 :src="`/storage/${block.data.path}`"
-                class="max-h-32 rounded-md border border-sidebar-border/70 dark:border-sidebar-border"
+                class="max-h-32 rounded-md border border-border"
             />
             <div class="grid gap-2">
                 <Label
@@ -89,6 +97,7 @@ const html = ref(props.block?.data.html ?? '');
                     name="image"
                     accept="image/*"
                     :required="!block"
+                    class="text-sm"
                 />
                 <InputError :message="errors.image" />
             </div>
@@ -121,7 +130,7 @@ const html = ref(props.block?.data.html ?? '');
             </div>
         </template>
 
-        <div class="grid gap-2">
+        <div class="grid gap-2 sm:w-32">
             <Label>Sorrend</Label>
             <Input
                 type="number"

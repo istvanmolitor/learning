@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { BookOpen, GraduationCap, Plus } from '@lucide/vue';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/Admin/LessonController';
+import AdminHeader from '@/components/admin/AdminHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -33,107 +37,148 @@ defineOptions({
         :title="course ? `Kurzus szerkesztése – ${course.title}` : 'Új kurzus'"
     />
 
-    <div class="flex flex-col gap-6 p-4">
-        <h1 class="text-xl font-semibold tracking-tight">
-            {{ course ? 'Kurzus szerkesztése' : 'Új kurzus' }}
-        </h1>
-
-        <Form
-            v-bind="
+    <div class="flex max-w-3xl flex-col gap-6 p-4">
+        <AdminHeader
+            :icon="GraduationCap"
+            :title="course ? 'Kurzus szerkesztése' : 'Új kurzus'"
+            :description="
                 course
-                    ? CourseController.update.form(course.id)
-                    : CourseController.store.form()
+                    ? course.title
+                    : 'Töltsd ki az alapadatokat az új kurzushoz.'
             "
-            class="flex max-w-xl flex-col gap-4"
-            v-slot="{ errors, processing }"
-        >
-            <div class="grid gap-2">
-                <Label for="title">Cím</Label>
-                <Input
-                    id="title"
-                    name="title"
-                    :default-value="course?.title"
-                    required
-                />
-                <InputError :message="errors.title" />
-            </div>
+            :back-href="CourseController.index()"
+            back-label="Kurzusok"
+        />
 
-            <div class="grid gap-2">
-                <Label for="slug">Slug</Label>
-                <Input
-                    id="slug"
-                    name="slug"
-                    :default-value="course?.slug"
-                    required
-                />
-                <InputError :message="errors.slug" />
-            </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Alapadatok</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Form
+                    v-bind="
+                        course
+                            ? CourseController.update.form(course.id)
+                            : CourseController.store.form()
+                    "
+                    class="flex flex-col gap-5"
+                    v-slot="{ errors, processing }"
+                >
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="grid gap-2">
+                            <Label for="title">Cím</Label>
+                            <Input
+                                id="title"
+                                name="title"
+                                :default-value="course?.title"
+                                required
+                            />
+                            <InputError :message="errors.title" />
+                        </div>
 
-            <div class="grid gap-2">
-                <Label for="description">Leírás</Label>
-                <textarea
-                    id="description"
-                    name="description"
-                    rows="4"
-                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                    >{{ course?.description }}</textarea>
-                <InputError :message="errors.description" />
-            </div>
+                        <div class="grid gap-2">
+                            <Label for="slug">Slug</Label>
+                            <Input
+                                id="slug"
+                                name="slug"
+                                :default-value="course?.slug"
+                                required
+                            />
+                            <InputError :message="errors.slug" />
+                        </div>
+                    </div>
 
-            <div class="grid gap-2">
-                <Label for="order">Sorrend</Label>
-                <Input
-                    id="order"
-                    type="number"
-                    name="order"
-                    :default-value="course?.order ?? 0"
-                />
-                <InputError :message="errors.order" />
-            </div>
+                    <div class="grid gap-2">
+                        <Label for="description">Leírás</Label>
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows="4"
+                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                            >{{ course?.description }}</textarea
+                        >
+                        <InputError :message="errors.description" />
+                    </div>
 
-            <label class="flex items-center gap-2 text-sm">
-                <input type="hidden" name="is_published" value="0" />
-                <input
-                    type="checkbox"
-                    name="is_published"
-                    value="1"
-                    :checked="course?.is_published"
-                    class="accent-primary"
-                />
-                Publikus
-            </label>
+                    <div class="grid gap-2 sm:w-40">
+                        <Label for="order">Sorrend</Label>
+                        <Input
+                            id="order"
+                            type="number"
+                            name="order"
+                            :default-value="course?.order ?? 0"
+                        />
+                        <InputError :message="errors.order" />
+                    </div>
 
-            <Button type="submit" :disabled="processing" class="w-fit"
-                >Mentés</Button
-            >
-        </Form>
+                    <label
+                        for="is_published"
+                        class="flex cursor-pointer items-start gap-3 rounded-lg border border-input p-4 transition-colors hover:border-primary/50"
+                    >
+                        <input type="hidden" name="is_published" value="0" />
+                        <Checkbox
+                            id="is_published"
+                            name="is_published"
+                            value="1"
+                            :default-value="course?.is_published ?? false"
+                            class="mt-0.5"
+                        />
+                        <span>
+                            <span class="block text-sm font-medium"
+                                >Publikus</span
+                            >
+                            <span class="block text-xs text-muted-foreground"
+                                >A kurzus megjelenik a tanulók számára a
+                                felületen.</span
+                            >
+                        </span>
+                    </label>
 
-        <div v-if="course" class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold tracking-tight">Leckék</h2>
+                    <Button type="submit" :disabled="processing" class="w-fit"
+                        >Mentés</Button
+                    >
+                </Form>
+            </CardContent>
+        </Card>
+
+        <Card v-if="course">
+            <CardHeader class="flex items-center justify-between">
+                <CardTitle>Leckék</CardTitle>
                 <Link :href="LessonController.create(course.id)">
-                    <Button variant="outline" size="sm">Új lecke</Button>
+                    <Button variant="outline" size="sm">
+                        <Plus class="size-3.5" />
+                        Új lecke
+                    </Button>
                 </Link>
-            </div>
-
-            <ul class="flex flex-col gap-2">
-                <li
-                    v-for="lesson in course.lessons"
-                    :key="lesson.id"
-                    class="flex items-center justify-between rounded-md border border-sidebar-border/70 p-3 text-sm dark:border-sidebar-border"
+            </CardHeader>
+            <CardContent>
+                <ul
+                    v-if="course.lessons.length > 0"
+                    class="flex flex-col gap-2"
                 >
-                    <span>{{ lesson.title }}</span>
-                    <Link :href="LessonController.edit(lesson.id)">
-                        <Button variant="outline" size="sm">Szerkesztés</Button>
-                    </Link>
-                </li>
-                <li
-                    v-if="course.lessons.length === 0"
-                    class="text-sm text-muted-foreground"
-                >
+                    <li
+                        v-for="(lesson, index) in course.lessons"
+                        :key="lesson.id"
+                        class="flex items-center gap-3 rounded-lg border border-border p-3 text-sm transition-colors hover:bg-muted/40"
+                    >
+                        <span
+                            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
+                        >
+                            {{ index + 1 }}
+                        </span>
+                        <BookOpen class="size-4 text-muted-foreground" />
+                        <span class="flex-1">{{ lesson.title }}</span>
+                        <Link :href="LessonController.edit(lesson.id)">
+                            <Button variant="outline" size="sm"
+                                >Szerkesztés</Button
+                            >
+                        </Link>
+                    </li>
+                </ul>
+                <p v-else class="text-sm text-muted-foreground">
                     Még nincs lecke.
-                </li>
-            </ul>
-        </div>
+                </p>
+            </CardContent>
+        </Card>
     </div>
 </template>

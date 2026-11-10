@@ -1,10 +1,23 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import {
+    BookOpenCheck,
+    Download,
+    GraduationCap,
+    Layers,
+    Pencil,
+    Trash2,
+    UploadCloud,
+} from '@lucide/vue';
+import { computed } from 'vue';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
+import AdminHeader from '@/components/admin/AdminHeader.vue';
 import InputError from '@/components/InputError.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
-defineProps<{
+const props = defineProps<{
     courses: {
         id: number;
         title: string;
@@ -13,6 +26,14 @@ defineProps<{
         lessons_count: number;
     }[];
 }>();
+
+const publishedCount = computed(
+    () => props.courses.filter((course) => course.is_published).length,
+);
+
+const totalLessons = computed(() =>
+    props.courses.reduce((sum, course) => sum + course.lessons_count, 0),
+);
 
 defineOptions({
     layout: {
@@ -26,83 +47,157 @@ defineOptions({
 <template>
     <Head title="Admin – Kurzusok" />
 
-    <div class="flex flex-col gap-4 p-4">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold tracking-tight">Kurzusok</h1>
-            <div class="flex items-center gap-2">
-                <Form
-                    v-bind="CourseController.import.form()"
-                    v-slot="{ errors, processing }"
-                    class="flex items-center gap-2"
+    <div class="flex flex-col gap-6 p-4">
+        <AdminHeader
+            :icon="GraduationCap"
+            title="Kurzusok"
+            description="Hozd létre és kezeld a platform kurzusait, leckéit és tartalmát."
+        >
+            <Form
+                v-bind="CourseController.import.form()"
+                v-slot="{ errors, processing }"
+                class="flex items-center gap-2"
+            >
+                <label
+                    class="flex h-9 cursor-pointer items-center gap-2 rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                 >
+                    <UploadCloud class="size-4" />
+                    Importálás
                     <input
                         type="file"
                         name="archive"
                         accept=".zip,application/zip"
                         required
-                        class="text-sm"
+                        class="hidden"
                     />
-                    <Button type="submit" variant="outline" :disabled="processing"
-                        >Importálás</Button
-                    >
-                    <InputError :message="errors.archive" />
-                </Form>
-                <Link :href="CourseController.create()">
-                    <Button>Új kurzus</Button>
-                </Link>
-            </div>
+                </label>
+                <Button type="submit" variant="outline" :disabled="processing"
+                    >Feltöltés</Button
+                >
+                <InputError :message="errors.archive" />
+            </Form>
+            <Link :href="CourseController.create()">
+                <Button>Új kurzus</Button>
+            </Link>
+        </AdminHeader>
+
+        <div class="grid gap-4 sm:grid-cols-3">
+            <Card class="flex-row items-center gap-4 px-5 py-4">
+                <div
+                    class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                >
+                    <GraduationCap class="size-5" />
+                </div>
+                <div>
+                    <p class="text-2xl font-bold leading-none">
+                        {{ courses.length }}
+                    </p>
+                    <p class="text-xs text-muted-foreground">Kurzus</p>
+                </div>
+            </Card>
+            <Card class="flex-row items-center gap-4 px-5 py-4">
+                <div
+                    class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                >
+                    <BookOpenCheck class="size-5" />
+                </div>
+                <div>
+                    <p class="text-2xl font-bold leading-none">
+                        {{ publishedCount }}
+                    </p>
+                    <p class="text-xs text-muted-foreground">Publikus</p>
+                </div>
+            </Card>
+            <Card class="flex-row items-center gap-4 px-5 py-4">
+                <div
+                    class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                >
+                    <Layers class="size-5" />
+                </div>
+                <div>
+                    <p class="text-2xl font-bold leading-none">
+                        {{ totalLessons }}
+                    </p>
+                    <p class="text-xs text-muted-foreground">Lecke összesen</p>
+                </div>
+            </Card>
         </div>
 
-        <div
-            class="overflow-x-auto rounded-lg border border-sidebar-border/70 dark:border-sidebar-border"
-        >
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Cím</th>
-                        <th class="p-3">Leckék</th>
-                        <th class="p-3">Publikus</th>
-                        <th class="p-3" />
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="course in courses"
-                        :key="course.id"
-                        class="border-t border-sidebar-border/70 dark:border-sidebar-border"
+        <Card class="p-0">
+            <div v-if="courses.length === 0" class="flex flex-col items-center gap-2 py-14 text-center">
+                <GraduationCap class="size-8 text-muted-foreground" />
+                <p class="font-medium">Még nincs kurzus</p>
+                <p class="text-sm text-muted-foreground">
+                    Hozd létre az első kurzust, vagy importálj egyet zip
+                    fájlból.
+                </p>
+            </div>
+
+            <ul v-else class="divide-y divide-border">
+                <li
+                    v-for="course in courses"
+                    :key="course.id"
+                    class="flex flex-wrap items-center gap-4 p-4 transition-colors hover:bg-muted/40"
+                >
+                    <div
+                        class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary"
                     >
-                        <td class="p-3">{{ course.title }}</td>
-                        <td class="p-3">{{ course.lessons_count }}</td>
-                        <td class="p-3">
-                            {{ course.is_published ? 'Igen' : 'Nem' }}
-                        </td>
-                        <td class="flex items-center gap-2 p-3">
-                            <Link :href="CourseController.edit(course.id)">
-                                <Button variant="outline" size="sm"
-                                    >Szerkesztés</Button
-                                >
-                            </Link>
-                            <a :href="CourseController.export(course.id).url">
-                                <Button variant="outline" size="sm"
-                                    >Export</Button
-                                >
-                            </a>
-                            <Form
-                                v-bind="
-                                    CourseController.destroy.form(course.id)
-                                "
+                        {{ course.title.charAt(0).toUpperCase() }}
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate font-medium">{{ course.title }}</p>
+                        <p class="truncate text-xs text-muted-foreground">
+                            /{{ course.slug }}
+                        </p>
+                    </div>
+
+                    <Badge variant="outline" class="gap-1">
+                        <Layers class="size-3" />
+                        {{ course.lessons_count }} lecke
+                    </Badge>
+
+                    <Badge
+                        :class="
+                            course.is_published
+                                ? 'border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                                : 'border-transparent bg-muted text-muted-foreground'
+                        "
+                    >
+                        {{ course.is_published ? 'Publikus' : 'Vázlat' }}
+                    </Badge>
+
+                    <div class="ml-auto flex items-center gap-2">
+                        <Link :href="CourseController.edit(course.id)">
+                            <Button variant="outline" size="sm">
+                                <Pencil class="size-3.5" />
+                                Szerkesztés
+                            </Button>
+                        </Link>
+                        <a :href="CourseController.export(course.id).url">
+                            <Button variant="ghost" size="sm">
+                                <Download class="size-3.5" />
+                                Export
+                            </Button>
+                        </a>
+                        <Form
+                            v-bind="
+                                CourseController.destroy.form(course.id)
+                            "
+                        >
+                            <Button
+                                type="submit"
+                                variant="ghost"
+                                size="sm"
+                                class="text-destructive hover:bg-destructive/10 hover:text-destructive"
                             >
-                                <Button
-                                    type="submit"
-                                    variant="destructive"
-                                    size="sm"
-                                    >Törlés</Button
-                                >
-                            </Form>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                                <Trash2 class="size-3.5" />
+                                Törlés
+                            </Button>
+                        </Form>
+                    </div>
+                </li>
+            </ul>
+        </Card>
     </div>
 </template>

@@ -15,7 +15,7 @@ class UserController extends Controller
         return Inertia::render('admin/users/Index', [
             'users' => User::query()
                 ->orderBy('name')
-                ->with('courses')
+                ->with(['courses', 'groups'])
                 ->get(),
             'courses' => Course::query()->orderBy('title')->get(['id', 'title']),
         ]);

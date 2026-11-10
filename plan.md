@@ -23,17 +23,49 @@ Kurzus (Course)
 
 ## 2. Felhasználók és szerepkörök
 
-- `users` tábla kiegészítve egy `is_admin` (boolean, default `false`) oszloppal — ez különbözteti meg az adminisztrátort a sima regisztrált felhasználótól.
+- A jogosultságkezelés csoport alapú: `groups` (felhasználói csoportok) és `permissions` (jogosultságok) táblák, köztük `group_user` és `group_permission` pivot táblákkal.
+- Egy felhasználó több csoportba is tartozhat, egy csoporthoz több jogosultság rendelhető — mindkét kapcsolat many-to-many.
+- A korábbi `users.is_admin` boolean oszlop megszűnt; helyette egy speciális, seederrel létrehozott `admin` nevű csoport létezik, amelynek tagjai minden jogosultsággal rendelkeznek (`User::isAdmin()` / `User::hasPermission()` ezt a csoportot mindig „mindenhatónak” kezeli, függetlenül attól, hogy a jövőben milyen új jogosultságok jönnek létre).
+- Jelenlegi jogosultságok: `manage-courses` (kurzusok/leckék/oldalak/tartalmak/kérdések kezelése), `manage-users` (felhasználók és kurzus hozzárendelések kezelése), `manage-groups` (csoportok és jogosultságok kezelése).
 - Bejelentkezés/regisztráció: a projektben jelenleg nincs auth scaffolding telepítve, ehhez szükséges egy auth starter (pl. Laravel Breeze) hozzáadása — **ez új függőség, felhasználói jóváhagyást igényel**.
-- Admin bejelentkezés ugyanazon a `users` táblán, ugyanazon login űrlapon történik, csak az `is_admin` flag dönt arról, hogy az admin felületet is elérheti-e.
+- Admin bejelentkezés ugyanazon a `users` táblán, ugyanazon login űrlapon történik; az admin felület elérését és az egyes admin alfunkciókat a felhasználó csoportjaihoz rendelt jogosultságok döntik el (`permission:<name>` route middleware).
 
 ## 3. Adatbázis séma
 
-### `users` (meglévő tábla kiegészítése)
+### `groups`
 
-| oszlop   | típus                  | megjegyzés        |
-| -------- | ---------------------- | ----------------- |
-| is_admin | boolean, default false | admin jogosultság |
+| oszlop     | típus           | megjegyzés                        |
+| ---------- | --------------- | ---------------------------------- |
+| id         | bigint PK       |                                     |
+| name       | string, unique  | pl. `admin`                        |
+| timestamps |                 |                                     |
+
+### `permissions`
+
+| oszlop      | típus              | megjegyzés                           |
+| ----------- | ------------------ | ------------------------------------- |
+| id          | bigint PK          |                                        |
+| name        | string, unique     | pl. `manage-courses`                  |
+| description | string, nullable   |                                        |
+| timestamps  |                    |                                        |
+
+### `group_user` (pivot)
+
+| oszlop   | típus         | megjegyzés |
+| -------- | ------------- | ---------- |
+| group_id | FK → groups   |            |
+| user_id  | FK → users    |            |
+
+Összetett PK: `(group_id, user_id)`.
+
+### `group_permission` (pivot)
+
+| oszlop        | típus            | megjegyzés |
+| ------------- | ---------------- | ---------- |
+| group_id      | FK → groups      |            |
+| permission_id | FK → permissions |            |
+
+Összetett PK: `(group_id, permission_id)`.
 
 ### `courses`
 
@@ -273,7 +305,7 @@ Az admin felület **Vue 3 + Inertia.js** alapú — nem különálló SPA/API, h
 
 ### Szerkezet
 
-- Útvonalak `/admin` prefix alatt, `auth` + egy dedikált `admin` middleware mögött, amely az `is_admin` mezőt ellenőrzi (`App\Http\Middleware\EnsureUserIsAdmin`).
+- Útvonalak `/admin` prefix alatt, `auth` + `verified` middleware mögött; az egyes admin alfunkció-csoportok emellett egy paraméterezett `permission:<name>` middleware-rel is védve vannak (`App\Http\Middleware\EnsureUserHasPermission`), ami a bejelentkezett felhasználó csoportjaihoz rendelt jogosultságokat ellenőrzi.
 - Admin controllerek (`App\Http\Controllers\Admin\*`) `Inertia::render('Admin/...', [...])` hívással adják át az adatot a Vue oldalaknak, ugyanúgy Form Request + Policy validációval, mint egy hagyományos Blade-es controllernél.
 - Vue oldalkomponensek: `resources/js/Pages/Admin/` alatt (pl. `Courses/Index.vue`, `Courses/Edit.vue`, `Lessons/Edit.vue`, `Questions/Edit.vue`, `Users/Enrollments.vue`), egy közös `Admin/Layout.vue` admin-menüvel.
 - `resources/js/app.js` Inertia belépési pont, ami a Blade `admin.blade.php` root nézetbe töltődik be (`@inertia` direktíva), elkülönítve a publikus (nem-admin) felhasználói nézetektől, amik maradnak sima Blade alapúak.

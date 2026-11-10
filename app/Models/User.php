@@ -19,7 +19,6 @@ use Illuminate\Support\Carbon;
  * @property string $email
  * @property Carbon|null $email_verified_at
  * @property string $password
- * @property bool $is_admin
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -44,13 +43,49 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'is_admin' => 'boolean',
         ];
     }
 
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
+    }
+
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(Group::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        $this->loadMissing('groups');
+
+        return $this->groups->contains('name', 'admin');
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        return in_array($permission, $this->effectivePermissions(), true);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function effectivePermissions(): array
+    {
+        $this->loadMissing('groups.permissions');
+
+        if ($this->groups->contains('name', 'admin')) {
+            return Permission::query()->pluck('name')->all();
+        }
+
+        return $this->groups
+            ->pluck('permissions')
+            ->flatten()
+            ->pluck('name')
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function courses(): BelongsToMany

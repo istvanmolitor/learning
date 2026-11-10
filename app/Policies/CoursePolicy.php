@@ -9,6 +9,6 @@ class CoursePolicy
 {
     public function view(User $user, Course $course): bool
     {
-        return $user->is_admin || $course->isEnrolledBy($user);
+        return $user->isAdmin() || $course->isEnrolledBy($user);
     }
 }

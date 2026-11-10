@@ -23,7 +23,7 @@ const props = defineProps<{
         id: number;
         name: string;
         email: string;
-        is_admin: boolean;
+        groups: { id: number; name: string }[];
         courses: {
             id: number;
             title: string;
@@ -35,8 +35,12 @@ const props = defineProps<{
 
 const { getInitials } = useInitials();
 
+function isAdmin(user: (typeof props.users)[number]) {
+    return user.groups.some((group) => group.name === 'admin');
+}
+
 const adminCount = computed(
-    () => props.users.filter((user) => user.is_admin).length,
+    () => props.users.filter((user) => isAdmin(user)).length,
 );
 
 const totalEnrollments = computed(() =>
@@ -130,11 +134,19 @@ defineOptions({
                         <p class="flex items-center gap-2 font-medium">
                             {{ user.name }}
                             <Badge
-                                v-if="user.is_admin"
-                                class="gap-1 border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                                v-for="group in user.groups"
+                                :key="group.id"
+                                :class="
+                                    group.name === 'admin'
+                                        ? 'gap-1 border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                                        : 'gap-1 border-transparent bg-muted text-muted-foreground'
+                                "
                             >
-                                <ShieldCheck class="size-3" />
-                                Admin
+                                <ShieldCheck
+                                    v-if="group.name === 'admin'"
+                                    class="size-3"
+                                />
+                                {{ group.name }}
                             </Badge>
                         </p>
                         <p class="truncate text-sm text-muted-foreground">

@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Course;
+use App\Models\Group;
+use App\Models\Permission;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -16,16 +18,28 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $permissions = collect([
+            ['name' => 'manage-courses', 'description' => 'Kurzusok, leckék és tartalmak kezelése'],
+            ['name' => 'manage-users', 'description' => 'Felhasználók és kurzus hozzárendelések kezelése'],
+            ['name' => 'manage-groups', 'description' => 'Felhasználói csoportok és jogosultságok kezelése'],
+        ])->map(fn (array $permission) => Permission::create($permission));
+
+        $adminGroup = Group::create(['name' => 'admin']);
+        $adminGroup->permissions()->attach($permissions->pluck('id'));
+
+        $userGroup = Group::create(['name' => 'Felhasználó']);
+
         $admin = User::factory()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
-            'is_admin' => true,
         ]);
+        $admin->groups()->attach($adminGroup);
 
         $student = User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+        $student->groups()->attach($userGroup);
 
         $course = Course::create([
             'title' => 'Bevezetés a webfejlesztésbe',

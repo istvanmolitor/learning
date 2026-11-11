@@ -1,25 +1,16 @@
 <script setup lang="ts">
-import { Form, Head, Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, GraduationCap, Plus, X } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { Form, Head } from '@inertiajs/vue3';
+import { GraduationCap } from '@lucide/vue';
+import { ref } from 'vue';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
-import CourseEnrollmentController from '@/actions/App/Http/Controllers/Admin/CourseEnrollmentController';
-import LessonController from '@/actions/App/Http/Controllers/Admin/LessonController';
 import AdminHeader from '@/components/admin/AdminHeader.vue';
+import CourseTabs from '@/components/admin/CourseTabs.vue';
 import InputError from '@/components/InputError.vue';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 
 const props = defineProps<{
     course: {
@@ -30,19 +21,10 @@ const props = defineProps<{
         thumbnail: string | null;
         is_published: boolean;
         order: number;
-        lessons: { id: number; title: string; order: number }[];
         creator: { id: number; name: string } | null;
-        enrolledUsers: { id: number; name: string; email: string; pivot: { id: number } }[];
-        availableUsers: { id: number; name: string; email: string }[];
     } | null;
     canManageEnrollments?: boolean;
 }>();
-
-const page = usePage();
-const permissions = computed(() => page.props.auth.permissions);
-const canManageAllCourses = computed(() =>
-    permissions.value.includes('manage-courses'),
-);
 
 defineOptions({
     layout: {
@@ -83,6 +65,12 @@ function onThumbnailChange(event: Event) {
             "
             :back-href="CourseController.index()"
             back-label="Kurzusok"
+        />
+
+        <CourseTabs
+            v-if="course"
+            :course-id="course.id"
+            :can-manage-enrollments="canManageEnrollments"
         />
 
         <Card>
@@ -130,8 +118,7 @@ function onThumbnailChange(event: Event) {
                             name="description"
                             rows="4"
                             class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                            >{{ course?.description }}</textarea
-                        >
+                            >{{ course?.description }}</textarea>
                         <InputError :message="errors.description" />
                     </div>
 
@@ -208,118 +195,6 @@ function onThumbnailChange(event: Event) {
 
                     <Button type="submit" :disabled="processing" class="w-fit"
                         >Mentés</Button
-                    >
-                </Form>
-            </CardContent>
-        </Card>
-
-        <Card v-if="course">
-            <CardHeader class="flex items-center justify-between">
-                <CardTitle>Leckék</CardTitle>
-                <Link
-                    v-if="canManageAllCourses"
-                    :href="LessonController.create(course.id)"
-                >
-                    <Button variant="outline" size="sm">
-                        <Plus class="size-3.5" />
-                        Új lecke
-                    </Button>
-                </Link>
-            </CardHeader>
-            <CardContent>
-                <ul
-                    v-if="course.lessons.length > 0"
-                    class="flex flex-col gap-2"
-                >
-                    <li
-                        v-for="(lesson, index) in course.lessons"
-                        :key="lesson.id"
-                        class="flex items-center gap-3 rounded-lg border border-border p-3 text-sm transition-colors hover:bg-muted/40"
-                    >
-                        <span
-                            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-                        >
-                            {{ index + 1 }}
-                        </span>
-                        <BookOpen class="size-4 text-muted-foreground" />
-                        <span class="flex-1">{{ lesson.title }}</span>
-                        <Link
-                            v-if="canManageAllCourses"
-                            :href="LessonController.edit(lesson.id)"
-                        >
-                            <Button variant="outline" size="sm"
-                                >Szerkesztés</Button
-                            >
-                        </Link>
-                    </li>
-                </ul>
-                <p v-else class="text-sm text-muted-foreground">
-                    Még nincs lecke.
-                </p>
-            </CardContent>
-        </Card>
-
-        <Card v-if="course && canManageEnrollments">
-            <CardHeader>
-                <CardTitle>Hozzárendelt felhasználók</CardTitle>
-            </CardHeader>
-            <CardContent class="flex flex-col gap-4">
-                <div class="flex flex-wrap items-center gap-2">
-                    <Badge
-                        v-for="user in course.enrolledUsers"
-                        :key="user.id"
-                        variant="secondary"
-                        class="gap-1.5 py-1.5 pr-1.5 pl-2.5"
-                    >
-                        {{ user.name }}
-                        <Form
-                            v-bind="
-                                CourseEnrollmentController.destroy.form([
-                                    course.id,
-                                    user.pivot.id,
-                                ])
-                            "
-                        >
-                            <button
-                                type="submit"
-                                class="rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-destructive"
-                            >
-                                <X class="size-3" />
-                            </button>
-                        </Form>
-                    </Badge>
-                    <p
-                        v-if="course.enrolledUsers.length === 0"
-                        class="text-sm text-muted-foreground"
-                    >
-                        Még nincs hozzárendelt felhasználó.
-                    </p>
-                </div>
-
-                <Form
-                    v-if="course.availableUsers.length > 0"
-                    v-bind="CourseEnrollmentController.store.form(course.id)"
-                    class="flex items-center gap-2"
-                >
-                    <Select
-                        name="user_id"
-                        :default-value="String(course.availableUsers[0]?.id)"
-                    >
-                        <SelectTrigger size="sm" class="w-64">
-                            <SelectValue placeholder="Válassz felhasználót" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem
-                                v-for="user in course.availableUsers"
-                                :key="user.id"
-                                :value="String(user.id)"
-                            >
-                                {{ user.name }} ({{ user.email }})
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Button type="submit" size="sm" variant="outline"
-                        >Hozzárendelés</Button
                     >
                 </Form>
             </CardContent>

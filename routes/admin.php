@@ -23,9 +23,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::post('courses/import', [CourseController::class, 'import'])->name('courses.import');
     Route::get('courses/{course}/edit', [CourseController::class, 'edit'])->name('courses.edit');
     Route::match(['put', 'patch'], 'courses/{course}', [CourseController::class, 'update'])->name('courses.update');
+    Route::get('courses/{course}/lessons', [CourseController::class, 'lessons'])->name('courses.lessons.index');
 
     // Assigning/removing users on a course: allowed for manage-users holders or the
     // course's own creator (enforced via CoursePolicy::manageEnrollments).
+    Route::get('courses/{course}/enrollments', [CourseEnrollmentController::class, 'index'])->name('courses.enrollments.index');
     Route::post('courses/{course}/enrollments', [CourseEnrollmentController::class, 'store'])->name('courses.enrollments.store');
     Route::delete('courses/{course}/enrollments/{enrollment}', [CourseEnrollmentController::class, 'destroy'])->name('courses.enrollments.destroy');
 
@@ -33,6 +35,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
         Route::get('courses/export', [CourseController::class, 'exportIndex'])->name('courses.export.index');
         Route::get('courses/{course}/export', [CourseController::class, 'export'])->name('courses.export');
         Route::delete('courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
+        Route::post('courses/{course}/pages/reorder', [CourseController::class, 'reorderPages'])->name('courses.pages.reorder');
         Route::resource('courses.lessons', LessonController::class)->shallow()->except(['show', 'index']);
         Route::resource('lessons.pages', PageController::class)->shallow()->except(['show', 'index']);
         Route::resource('pages.content-blocks', ContentBlockController::class)->shallow()->only(['store', 'update', 'destroy']);

@@ -4,13 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CourseImportRequest;
+use App\Http\Requests\Admin\CoursePagesReorderRequest;
 use App\Http\Requests\Admin\CourseRequest;
 use App\Models\Course;
-use App\Models\User;
+use App\Models\Page;
 use App\Services\CourseTransfer\CourseExporter;
 use App\Services\CourseTransfer\CourseImporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -66,35 +68,30 @@ class CourseController extends Controller
             'assigned_at' => now(),
         ]);
 
-        return to_route('admin.courses.edit', $course);
+        return to_route('admin.courses.lessons.index', $course);
     }
 
     public function edit(Course $course): Response
     {
         Gate::authorize('update', $course);
 
-        $course->load('lessons', 'creator');
-        $canManageEnrollments = Gate::allows('manageEnrollments', $course);
-
-        $enrolledUsers = [];
-        $availableUsers = [];
-
-        if ($canManageEnrollments) {
-            $course->load(['enrolledUsers' => fn ($query) => $query->orderBy('name')]);
-            $enrolledUsers = $course->enrolledUsers;
-            $availableUsers = User::query()
-                ->whereDoesntHave('courses', fn ($query) => $query->where('course_id', $course->id))
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']);
-        }
+        $course->load('creator');
 
         return Inertia::render('admin/courses/Edit', [
-            'course' => [
-                ...$course->toArray(),
-                'enrolledUsers' => $enrolledUsers,
-                'availableUsers' => $availableUsers,
-            ],
-            'canManageEnrollments' => $canManageEnrollments,
+            'course' => $course,
+            'canManageEnrollments' => Gate::allows('manageEnrollments', $course),
+        ]);
+    }
+
+    public function lessons(Course $course): Response
+    {
+        Gate::authorize('update', $course);
+
+        $course->load('lessons.pages', 'creator');
+
+        return Inertia::render('admin/courses/Lessons', [
+            'course' => $course,
+            'canManageEnrollments' => Gate::allows('manageEnrollments', $course),
         ]);
     }
 
@@ -120,7 +117,23 @@ class CourseController extends Controller
 
         $course->update($data);
 
-        return to_route('admin.courses.index');
+        return to_route('admin.courses.lessons.index', $course);
+    }
+
+    public function reorderPages(CoursePagesReorderRequest $request, Course $course): RedirectResponse
+    {
+        Gate::authorize('update', $course);
+
+        DB::transaction(function () use ($request): void {
+            foreach ($request->validated('pages') as $pageData) {
+                Page::whereKey($pageData['id'])->update([
+                    'lesson_id' => $pageData['lesson_id'],
+                    'order' => $pageData['order'],
+                ]);
+            }
+        });
+
+        return back();
     }
 
     public function destroy(Course $course): RedirectResponse

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { Download, FileText } from '@lucide/vue';
+import { Download, FileText, Presentation } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
 import PublicCourseController from '@/actions/App/Http/Controllers/CourseController';
@@ -33,7 +33,7 @@ defineOptions({
     },
 });
 
-type ExportFormat = 'zip' | 'pdf';
+type ExportFormat = 'zip' | 'pdf' | 'pptx';
 
 const selectedCourseId = ref(
     props.courses[0] ? String(props.courses[0].id) : '',
@@ -51,9 +51,14 @@ const exportUrl = computed(() => {
         return null;
     }
 
-    return selectedFormat.value === 'zip'
-        ? CourseController.export(selectedCourse.value.id).url
-        : PublicCourseController.pdf(selectedCourse.value.slug).url;
+    switch (selectedFormat.value) {
+        case 'zip':
+            return CourseController.export(selectedCourse.value.id).url;
+        case 'pdf':
+            return PublicCourseController.pdf(selectedCourse.value.slug).url;
+        case 'pptx':
+            return PublicCourseController.pptx(selectedCourse.value.slug).url;
+    }
 });
 </script>
 
@@ -106,6 +111,9 @@ const exportUrl = computed(() => {
                             <SelectItem value="pdf">
                                 PDF (megosztáshoz, nyomtatáshoz)
                             </SelectItem>
+                            <SelectItem value="pptx">
+                                PowerPoint (előadáshoz)
+                            </SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -113,7 +121,13 @@ const exportUrl = computed(() => {
                 <a v-if="exportUrl" :href="exportUrl" class="self-start">
                     <Button>
                         <component
-                            :is="selectedFormat === 'zip' ? Download : FileText"
+                            :is="
+                                {
+                                    zip: Download,
+                                    pdf: FileText,
+                                    pptx: Presentation,
+                                }[selectedFormat]
+                            "
                             class="size-4"
                         />
                         Letöltés

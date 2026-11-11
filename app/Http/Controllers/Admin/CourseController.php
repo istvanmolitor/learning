@@ -3,13 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CourseImportConfirmRequest;
 use App\Http\Requests\Admin\CourseImportRequest;
+use App\Http\Requests\Admin\CourseLessonsReorderRequest;
 use App\Http\Requests\Admin\CoursePagesReorderRequest;
 use App\Http\Requests\Admin\CourseRequest;
 use App\Models\Course;
 use App\Models\Page;
 use App\Services\CourseTransfer\CourseExporter;
-use App\Services\CourseTransfer\CourseImporter;
+use App\Services\CourseTransfer\ImportPlanner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +19,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CourseController extends Controller
@@ -87,12 +90,54 @@ class CourseController extends Controller
     {
         Gate::authorize('update', $course);
 
-        $course->load('lessons.pages', 'creator');
+        $course->load(['lessons.pages', 'lessons.questions', 'creator']);
 
-        return Inertia::render('admin/courses/Lessons', [
-            'course' => $course,
+        return Inertia::render('admin/courses/Editor', [
+            'course' => [
+                'id' => $course->id,
+                'title' => $course->title,
+                'slug' => $course->slug,
+                'description' => $course->description,
+                'thumbnail' => $course->thumbnail,
+                'is_published' => $course->is_published,
+                'order' => $course->order,
+                'lessons' => $course->lessons->map(fn ($lesson) => [
+                    'id' => $lesson->id,
+                    'title' => $lesson->title,
+                    'slug' => $lesson->slug,
+                    'order' => $lesson->order,
+                    'questions' => $lesson->questions->map(fn ($question) => [
+                        'id' => $question->id,
+                        'text' => $question->text,
+                    ]),
+                    'pages' => $lesson->pages->map(fn ($page) => [
+                        'id' => $page->id,
+                        'title' => $page->title,
+                        'slug' => $page->slug,
+                        'order' => $page->order,
+                        'markdown' => $page->markdown,
+                        'narration_text' => $page->narration_text,
+                        'narration_audio_path' => $page->narration_audio_path,
+                    ]),
+                ]),
+            ],
             'canManageEnrollments' => Gate::allows('manageEnrollments', $course),
         ]);
+    }
+
+    public function reorderLessons(CourseLessonsReorderRequest $request, Course $course): RedirectResponse
+    {
+        Gate::authorize('update', $course);
+
+        DB::transaction(function () use ($request, $course): void {
+            foreach ($request->validated('lessons') as $lessonData) {
+                $course->lessons()->whereKey($lessonData['id'])->update([
+                    'order' => $lessonData['order'],
+                ]);
+            }
+        });
+
+        return back();
     }
 
     public function update(CourseRequest $request, Course $course): RedirectResponse
@@ -165,23 +210,58 @@ class CourseController extends Controller
         return response()->download($path, $course->slug.'.zip')->deleteFileAfterSend();
     }
 
-    public function importCreate(): Response
+    public function importCreate(Request $request): Response
     {
         Gate::authorize('create', Course::class);
 
-        return Inertia::render('admin/courses/Import');
+        return Inertia::render('admin/courses/Import', [
+            'plan' => $request->session()->get('importPlan'),
+            'token' => $request->session()->get('importToken'),
+        ]);
     }
 
-    public function import(CourseImportRequest $request, CourseImporter $importer): RedirectResponse
+    public function importAnalyze(CourseImportRequest $request, ImportPlanner $planner): RedirectResponse
     {
         Gate::authorize('create', Course::class);
 
-        $course = match (true) {
-            $request->hasFile('archive') => $importer->import($request->file('archive'), $request->user()->id),
-            $request->hasFile('files') => $importer->importMarkdownFiles($request->file('files'), $request->user()->id),
-            default => $importer->importManifestFile($request->file('manifest'), $request->user()->id),
-        };
+        try {
+            $staged = $planner->stage($request->file('files'));
+        } catch (RuntimeException $exception) {
+            return back()->withErrors(['files' => $exception->getMessage()]);
+        }
 
-        return to_route('admin.courses.edit', $course);
+        return to_route('admin.courses.import.create')
+            ->with('importPlan', $staged['plan'])
+            ->with('importToken', $staged['token']);
+    }
+
+    public function importConfirm(CourseImportConfirmRequest $request, ImportPlanner $planner): RedirectResponse
+    {
+        Gate::authorize('create', Course::class);
+
+        try {
+            $course = $planner->confirm(
+                $request->validated('token'),
+                $request->validated(),
+                $request->user()->id,
+            );
+        } catch (RuntimeException $exception) {
+            return to_route('admin.courses.import.create')->withErrors(['files' => $exception->getMessage()]);
+        }
+
+        return to_route('admin.courses.edit', $course)->with('success', 'A kurzus importálása sikerült.');
+    }
+
+    public function importDiscard(Request $request, ImportPlanner $planner): RedirectResponse
+    {
+        Gate::authorize('create', Course::class);
+
+        $token = (string) $request->input('token');
+
+        if (preg_match('/^[A-Za-z0-9]{24}$/', $token)) {
+            $planner->discard($token);
+        }
+
+        return to_route('admin.courses.import.create');
     }
 }

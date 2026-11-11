@@ -4,7 +4,6 @@ import { CheckCircle2, ChevronLeft, ChevronRight } from '@lucide/vue';
 import CourseController from '@/actions/App/Http/Controllers/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/LessonController';
 import PageController from '@/actions/App/Http/Controllers/PageController';
-import ContentBlock from '@/components/content-blocks/ContentBlock.vue';
 import { Button } from '@/components/ui/button';
 
 const props = defineProps<{
@@ -22,11 +21,7 @@ const props = defineProps<{
         previous: { slug: string; title: string } | null;
         next: { slug: string; title: string } | null;
     };
-    contentBlocks: {
-        id: number;
-        type: string;
-        data: Record<string, unknown>;
-    }[];
+    contentHtml: string;
 }>();
 
 defineOptions({
@@ -88,13 +83,10 @@ defineOptions({
             :src="page.narration_audio_url"
         />
 
-        <div class="flex flex-col gap-6">
-            <ContentBlock
-                v-for="block in contentBlocks"
-                :key="block.id"
-                :block="block"
-            />
-        </div>
+        <div
+            class="prose prose-neutral max-w-none dark:prose-invert"
+            v-html="contentHtml"
+        />
 
         <div class="flex items-center justify-between border-t pt-4">
             <Link

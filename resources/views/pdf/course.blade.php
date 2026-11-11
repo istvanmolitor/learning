@@ -262,6 +262,32 @@
         color: #1f1b2e;
     }
 
+    /* ---------- quiz questions ---------- */
+    .quiz {
+        margin-top: 10px;
+        padding: 14px 18px;
+        background: #f6f3fe;
+        border-radius: 10px;
+    }
+
+    .quiz-title {
+        font-size: 13px;
+        font-weight: bold;
+        color: #4c1d95;
+        margin: 0 0 8px 0;
+    }
+
+    .quiz-question {
+        margin: 0 0 8px 0;
+        font-size: 11px;
+        color: #1f1b2e;
+    }
+
+    .quiz-question-number {
+        font-weight: bold;
+        color: #7c3aed;
+    }
+
     /* ---------- image block ---------- */
     .image-block {
         margin: 0 0 16px 0;
@@ -394,47 +420,21 @@
             <article class="page-block">
                 <h3 class="page-title">{{ $page->title }}</h3>
 
-                @foreach ($page->contentBlocks as $block)
-                    @switch($block->type->value)
-                        @case('heading')
-                            @php $level = min(max((int) ($block->data['level'] ?? 2), 1), 4) @endphp
-                            <div class="prose">{!! sprintf('<h%1$d>%2$s</h%1$d>', $level, e($block->data['text'] ?? '')) !!}</div>
-                            @break
-
-                        @case('text')
-                            <div class="prose">{!! $block->data['html'] ?? '' !!}</div>
-                            @break
-
-                        @case('image')
-                            @php $imagePath = $block->data['path'] ?? null @endphp
-                            @php $absolutePath = $imagePath ? \Illuminate\Support\Facades\Storage::disk('public')->path($imagePath) : null @endphp
-                            @if ($absolutePath && is_file($absolutePath))
-                                <figure class="image-block">
-                                    <img src="{{ $absolutePath }}" alt="{{ $block->data['alt'] ?? '' }}">
-                                    @if (! empty($block->data['caption']))
-                                        <figcaption>{{ $block->data['caption'] }}</figcaption>
-                                    @endif
-                                </figure>
-                            @endif
-                            @break
-
-                        @case('youtube_video')
-                            @php $videoId = $block->data['video_id'] ?? null @endphp
-                            @if ($videoId)
-                                <a class="video-card" href="https://www.youtube.com/watch?v={{ $videoId }}">
-                                    <div class="video-card-icon"><span>&#9654;</span></div>
-                                    <div class="video-card-body">
-                                        <span class="video-card-label">VIDEÓ</span>
-                                        <span class="video-card-title">{{ $block->data['title'] ?? 'YouTube videó megtekintése' }}</span>
-                                        <span class="video-card-url">youtube.com/watch?v={{ $videoId }}</span>
-                                    </div>
-                                </a>
-                            @endif
-                            @break
-                    @endswitch
-                @endforeach
+                <div class="prose">{!! \App\Services\Publishing\PageHtml::forPdf($page) !!}</div>
             </article>
         @endforeach
+
+        @if ($lesson->questions->isNotEmpty())
+            <div class="quiz">
+                <p class="quiz-title">Ellenőrző kérdések</p>
+                @foreach ($lesson->questions as $question)
+                    <p class="quiz-question">
+                        <span class="quiz-question-number">{{ $loop->iteration }}.</span>
+                        {{ $question->text }}
+                    </p>
+                @endforeach
+            </div>
+        @endif
     </section>
 @endforeach
 

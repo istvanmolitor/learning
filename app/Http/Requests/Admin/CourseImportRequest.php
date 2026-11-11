@@ -4,18 +4,38 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * The wizard's single drop zone: one zip, one course.json, or any number of
+ * .md files. What was uploaded is detected server-side, not chosen by the user.
+ */
 class CourseImportRequest extends FormRequest
 {
     /**
-     * @return array<string, array<int, string>>
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'archive' => ['required_without_all:files,manifest', 'nullable', 'file', 'mimes:zip', 'max:51200'],
-            'files' => ['required_without_all:archive,manifest', 'nullable', 'array', 'min:1'],
-            'files.*' => ['file', 'extensions:md', 'max:10240'],
-            'manifest' => ['required_without_all:archive,files', 'nullable', 'file', 'extensions:json', 'max:5120'],
+            'files' => ['required', 'array', 'min:1'],
+            'files.*' => ['file', 'extensions:zip,json,md', 'max:102400'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $files = $this->file('files', []);
+            $extensions = array_map(
+                fn ($file) => strtolower($file->getClientOriginalExtension()),
+                $files
+            );
+
+            $hasZip = in_array('zip', $extensions, true);
+            $hasJson = in_array('json', $extensions, true);
+
+            if (($hasZip || $hasJson) && count($files) > 1) {
+                $validator->errors()->add('files', 'Zip vagy course.json mellé nem tölthető fel további fájl — ezekből egyszerre csak egyet adj meg.');
+            }
+        });
     }
 }

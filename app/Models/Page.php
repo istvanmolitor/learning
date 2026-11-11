@@ -6,20 +6,26 @@ use App\Concerns\Completable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
-#[Fillable(['lesson_id', 'title', 'slug', 'order', 'narration_text', 'narration_audio_path'])]
+#[Fillable(['lesson_id', 'title', 'slug', 'order', 'markdown', 'narration_text', 'narration_audio_path'])]
 class Page extends Model
 {
     use Completable;
 
+    protected static function booted(): void
+    {
+        // body_html is a render cache: the markdown column is the single source
+        // of truth, so it is never written directly.
+        static::saving(function (Page $page) {
+            if ($page->isDirty('markdown')) {
+                $page->body_html = Str::markdown($page->markdown ?? '');
+            }
+        });
+    }
+
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
-    }
-
-    public function contentBlocks(): HasMany
-    {
-        return $this->hasMany(ContentBlock::class)->orderBy('order');
     }
 }

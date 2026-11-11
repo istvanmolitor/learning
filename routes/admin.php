@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\ContentBlockController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\EnrollmentController;
@@ -20,7 +19,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::get('courses/create', [CourseController::class, 'create'])->name('courses.create');
     Route::post('courses', [CourseController::class, 'store'])->name('courses.store');
     Route::get('courses/import', [CourseController::class, 'importCreate'])->name('courses.import.create');
-    Route::post('courses/import', [CourseController::class, 'import'])->name('courses.import');
+    Route::post('courses/import', [CourseController::class, 'importAnalyze'])->name('courses.import');
+    Route::post('courses/import/confirm', [CourseController::class, 'importConfirm'])->name('courses.import.confirm');
+    Route::post('courses/import/discard', [CourseController::class, 'importDiscard'])->name('courses.import.discard');
     Route::get('courses/{course}/edit', [CourseController::class, 'edit'])->name('courses.edit');
     Route::match(['put', 'patch'], 'courses/{course}', [CourseController::class, 'update'])->name('courses.update');
     Route::get('courses/{course}/lessons', [CourseController::class, 'lessons'])->name('courses.lessons.index');
@@ -36,9 +37,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
         Route::get('courses/{course}/export', [CourseController::class, 'export'])->name('courses.export');
         Route::delete('courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
         Route::post('courses/{course}/pages/reorder', [CourseController::class, 'reorderPages'])->name('courses.pages.reorder');
-        Route::resource('courses.lessons', LessonController::class)->shallow()->except(['show', 'index']);
-        Route::resource('lessons.pages', PageController::class)->shallow()->except(['show', 'index']);
-        Route::resource('pages.content-blocks', ContentBlockController::class)->shallow()->only(['store', 'update', 'destroy']);
+        Route::post('courses/{course}/lessons/reorder', [CourseController::class, 'reorderLessons'])->name('courses.lessons.reorder');
+        Route::post('lessons/{lesson}/pages/upload', [LessonController::class, 'uploadPages'])->name('lessons.pages.upload');
+        Route::resource('courses.lessons', LessonController::class)->shallow()->only(['store', 'update', 'destroy']);
+        Route::resource('lessons.pages', PageController::class)->shallow()->only(['store', 'update', 'destroy']);
         Route::resource('lessons.questions', QuestionController::class)->shallow()->except(['show', 'index']);
     });
 

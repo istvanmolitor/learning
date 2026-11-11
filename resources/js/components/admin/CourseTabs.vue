@@ -21,7 +21,7 @@ const tabs = computed(() => {
         href: NonNullable<InertiaLinkProps['href']>;
     }[] = [
         { title: 'Alapadatok', href: CourseController.edit(props.courseId) },
-        { title: 'Leckék', href: CourseController.lessons(props.courseId) },
+        { title: 'Szerkesztő', href: CourseController.lessons(props.courseId) },
     ];
 
     if (props.canManageEnrollments) {

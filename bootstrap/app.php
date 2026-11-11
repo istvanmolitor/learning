@@ -27,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        // The MCP server is called by token-authenticated AI clients, not
+        // browser sessions, so it carries no CSRF token.
+        $middleware->validateCsrfTokens(except: ['mcp/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -30,7 +30,7 @@ class QuestionController extends Controller
 
         $this->syncOptions($question, $request->validated('options'), (int) $request->validated('correct_option'));
 
-        return to_route('admin.lessons.edit', $lesson);
+        return to_route('admin.courses.lessons.index', $lesson->course_id);
     }
 
     public function edit(Question $question): Response
@@ -53,7 +53,7 @@ class QuestionController extends Controller
 
         $this->syncOptions($question, $request->validated('options'), (int) $request->validated('correct_option'));
 
-        return to_route('admin.lessons.edit', $question->lesson);
+        return to_route('admin.courses.lessons.index', $question->lesson->course_id);
     }
 
     public function destroy(Question $question): RedirectResponse
@@ -61,7 +61,7 @@ class QuestionController extends Controller
         $lesson = $question->lesson;
         $question->delete();
 
-        return to_route('admin.lessons.edit', $lesson);
+        return to_route('admin.courses.lessons.index', $lesson->course_id);
     }
 
     private function syncOptions(Question $question, array $options, int $correctOption): void

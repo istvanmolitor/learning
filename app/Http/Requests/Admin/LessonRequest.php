@@ -17,7 +17,7 @@ class LessonRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'slug' => [
-                'required', 'string', 'max:255', 'alpha_dash',
+                'nullable', 'string', 'max:255', 'alpha_dash',
                 Rule::unique('lessons', 'slug')->where('course_id', $courseId)->ignore($lesson?->id),
             ],
             'order' => ['nullable', 'integer', 'min:0'],

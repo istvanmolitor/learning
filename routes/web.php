@@ -15,6 +15,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
     Route::get('courses/{course:slug}', [CourseController::class, 'show'])->name('courses.show');
     Route::get('courses/{course:slug}/pdf', [CourseController::class, 'pdf'])->name('courses.pdf');
+    Route::get('courses/{course:slug}/pptx', [CourseController::class, 'pptx'])->name('courses.pptx');
 
     Route::scopeBindings()->group(function () {
         Route::get('courses/{course:slug}/lessons/{lesson:slug}', [LessonController::class, 'show'])->name('lessons.show');
@@ -30,3 +31,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 require __DIR__.'/settings.php';
 require __DIR__.'/admin.php';
+require __DIR__.'/mcp.php';

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
+use App\Services\Publishing\CoursePptxExporter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CourseController extends Controller
 {
@@ -75,7 +77,7 @@ class CourseController extends Controller
     {
         Gate::authorize('view', $course);
 
-        $course->loadMissing('lessons.pages.contentBlocks');
+        $course->loadMissing('lessons.pages', 'lessons.questions');
 
         $pdf = Pdf::loadView('pdf.course', [
             'course' => $course,
@@ -108,5 +110,14 @@ class CourseController extends Controller
         });
 
         return $pdf->download(Str::slug($course->slug).'.pdf');
+    }
+
+    public function pptx(Course $course, CoursePptxExporter $exporter): BinaryFileResponse
+    {
+        Gate::authorize('view', $course);
+
+        $path = $exporter->export($course);
+
+        return response()->download($path, Str::slug($course->slug).'.pptx')->deleteFileAfterSend();
     }
 }

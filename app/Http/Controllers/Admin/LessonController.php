@@ -6,49 +6,70 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LessonRequest;
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Services\CourseTransfer\CourseImporter;
 use Illuminate\Http\RedirectResponse;
-use Inertia\Inertia;
-use Inertia\Response;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class LessonController extends Controller
 {
-    public function create(Course $course): Response
+    /**
+     * Append uploaded .md files as new pages at the end of the lesson —
+     * additive only, nothing is deleted or overwritten.
+     */
+    public function uploadPages(Request $request, Lesson $lesson, CourseImporter $importer): RedirectResponse
     {
-        return Inertia::render('admin/lessons/Edit', [
-            'course' => $course,
-            'lesson' => null,
+        $request->validate([
+            'files' => ['required', 'array', 'min:1'],
+            'files.*' => ['file', 'extensions:md', 'max:10240'],
         ]);
+
+        $created = $importer->appendMarkdownPages($lesson, $request->file('files'));
+
+        return back()->with('success', "{$created} oldal hozzáadva a leckéhez.");
     }
 
     public function store(LessonRequest $request, Course $course): RedirectResponse
     {
-        $course->lessons()->create($request->validated());
+        $data = $request->validated();
+        $data['slug'] ??= $this->uniqueSlug($course, $data['title']);
+        $data['order'] ??= ($course->lessons()->max('order') ?? -1) + 1;
 
-        return to_route('admin.courses.edit', $course);
-    }
+        $course->lessons()->create($data);
 
-    public function edit(Lesson $lesson): Response
-    {
-        $lesson->load(['pages', 'questions.answerOptions']);
-
-        return Inertia::render('admin/lessons/Edit', [
-            'course' => $lesson->course,
-            'lesson' => $lesson,
-        ]);
+        return back();
     }
 
     public function update(LessonRequest $request, Lesson $lesson): RedirectResponse
     {
-        $lesson->update($request->validated());
+        $data = array_filter(
+            $request->validated(),
+            fn ($value) => $value !== null,
+        );
 
-        return to_route('admin.courses.edit', $lesson->course);
+        $lesson->update($data);
+
+        return back();
     }
 
     public function destroy(Lesson $lesson): RedirectResponse
     {
-        $course = $lesson->course;
         $lesson->delete();
 
-        return to_route('admin.courses.edit', $course);
+        return back();
+    }
+
+    private function uniqueSlug(Course $course, string $title): string
+    {
+        $base = Str::slug($title) ?: 'lecke';
+        $slug = $base;
+        $i = 1;
+
+        while ($course->lessons()->where('slug', $slug)->exists()) {
+            $slug = "{$base}-{$i}";
+            $i++;
+        }
+
+        return $slug;
     }
 }

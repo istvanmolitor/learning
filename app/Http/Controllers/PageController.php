@@ -50,11 +50,7 @@ class PageController extends Controller
                 'previous' => $previousPage ? ['slug' => $previousPage->slug, 'title' => $previousPage->title] : null,
                 'next' => $nextPage ? ['slug' => $nextPage->slug, 'title' => $nextPage->title] : null,
             ],
-            'contentBlocks' => $page->contentBlocks->map(fn ($block) => [
-                'id' => $block->id,
-                'type' => $block->type->value,
-                'data' => $block->data,
-            ]),
+            'contentHtml' => $page->body_html,
         ]);
     }
 

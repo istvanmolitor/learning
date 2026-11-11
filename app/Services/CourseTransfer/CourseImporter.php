@@ -2,7 +2,6 @@
 
 namespace App\Services\CourseTransfer;
 
-use App\Enums\ContentBlockType;
 use App\Models\Course;
 use App\Models\Lesson;
 use Illuminate\Http\UploadedFile;
@@ -15,6 +14,17 @@ use ZipArchive;
 
 class CourseImporter
 {
+    public const FORMAT_VERSION = 1;
+
+    /**
+     * Media target paths already claimed during this import run, used to keep
+     * stored filenames deterministic (original basename, numbered on collision)
+     * instead of random.
+     *
+     * @var array<string, string> target path => source path it belongs to
+     */
+    private array $claimedMediaPaths = [];
+
     /**
      * Import a course export zip. If it contains a course.json, its slug decides
      * whether an existing course is updated (full resync) or a new one is created.
@@ -25,31 +35,45 @@ class CourseImporter
     {
         $extractPath = storage_path('app/tmp/course-import-'.Str::random(12));
 
+        $this->extractZip($file->getRealPath(), $extractPath);
+
+        try {
+            return $this->importExtracted($extractPath, pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), $createdBy);
+        } finally {
+            File::deleteDirectory($extractPath);
+        }
+    }
+
+    /**
+     * Import an already-extracted course package directory (used by the wizard's
+     * confirm step and the course:validate command).
+     */
+    public function importExtracted(string $extractPath, string $titleFallback, ?int $createdBy = null): Course
+    {
+        $manifestRoot = $this->locateManifestRoot($extractPath);
+
+        if ($manifestRoot !== null) {
+            $manifest = json_decode($this->readFile($manifestRoot.'/course.json'), true, flags: JSON_THROW_ON_ERROR);
+
+            return $this->importManifest($manifest, $manifestRoot, $createdBy);
+        }
+
+        $markdownRoot = $this->resolveMarkdownRoot($extractPath);
+        $manifest = $this->synthesizeManifest($markdownRoot, $titleFallback);
+
+        return $this->importManifest($manifest, $markdownRoot, $createdBy);
+    }
+
+    public function extractZip(string $zipPath, string $extractPath): void
+    {
         $zip = new ZipArchive;
 
-        if ($zip->open($file->getRealPath()) !== true) {
+        if ($zip->open($zipPath) !== true) {
             throw new RuntimeException('A feltöltött fájl nem érvényes zip archívum.');
         }
 
         $zip->extractTo($extractPath);
         $zip->close();
-
-        try {
-            $manifestRoot = $this->locateManifestRoot($extractPath);
-
-            if ($manifestRoot !== null) {
-                $manifest = json_decode($this->readFile($manifestRoot.'/course.json'), true, flags: JSON_THROW_ON_ERROR);
-
-                return $this->importManifest($manifest, $manifestRoot, $createdBy);
-            }
-
-            $markdownRoot = $this->resolveMarkdownRoot($extractPath);
-            $manifest = $this->synthesizeManifest($markdownRoot, pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
-
-            return $this->importManifest($manifest, $markdownRoot, $createdBy);
-        } finally {
-            File::deleteDirectory($extractPath);
-        }
     }
 
     /**
@@ -86,7 +110,55 @@ class CourseImporter
     {
         $manifest = json_decode($this->readFile($file->getRealPath()), true, flags: JSON_THROW_ON_ERROR);
 
+        return $this->importManifestData($manifest, $createdBy);
+    }
+
+    /**
+     * @param  array<string, mixed>  $manifest
+     */
+    public function importManifestData(array $manifest, ?int $createdBy = null): Course
+    {
         return $this->importManifest($manifest, null, $createdBy);
+    }
+
+    /**
+     * Import a manifest whose content files live under the given root directory
+     * (used by the import wizard, which resolves the manifest itself).
+     *
+     * @param  array<string, mixed>  $manifest
+     */
+    public function importResolvedManifest(array $manifest, string $root, ?int $createdBy = null): Course
+    {
+        return $this->importManifest($manifest, $root, $createdBy);
+    }
+
+    /**
+     * Append .md files as new pages at the end of an existing lesson. Unlike a
+     * resync import this never deletes or overwrites anything.
+     *
+     * @param  UploadedFile[]  $files
+     * @return int number of pages created
+     */
+    public function appendMarkdownPages(Lesson $lesson, array $files): int
+    {
+        $nextOrder = ($lesson->pages()->max('order') ?? -1) + 1;
+        $created = 0;
+
+        foreach ($files as $file) {
+            $name = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $slug = $this->uniquePageSlug($lesson, Str::slug($name) ?: 'oldal');
+
+            $lesson->pages()->create([
+                'title' => Str::headline($name),
+                'slug' => $slug,
+                'order' => $nextOrder++,
+                'markdown' => trim($this->readFile($file->getRealPath())),
+            ]);
+
+            $created++;
+        }
+
+        return $created;
     }
 
     /**
@@ -124,7 +196,7 @@ class CourseImporter
 
                 $changes = array_filter([
                     'narration_text' => $this->readSiblingFile($pagePath, 'txt'),
-                    'narration_audio_path' => $this->importNarrationAudio($pagePath, $course->id),
+                    'narration_audio_path' => $this->importNarrationAudio($pagePath, $course->id, $lessonData['slug'], $pageData['slug']),
                 ], fn ($value) => $value !== null);
 
                 if ($changes === []) {
@@ -143,9 +215,13 @@ class CourseImporter
      * Create the course if its manifest slug is new, or fully resync an existing one:
      * lessons/pages/questions in the manifest are created/updated by slug, and anything
      * belonging to the course that is no longer in the manifest is deleted.
+     *
+     * @param  array<string, mixed>  $manifest
      */
     private function importManifest(array $manifest, ?string $root, ?int $createdBy): Course
     {
+        $this->claimedMediaPaths = [];
+
         return DB::transaction(function () use ($manifest, $root, $createdBy) {
             $slug = $manifest['slug'] ?? Str::slug($manifest['title']);
             $course = Course::where('slug', $slug)->first();
@@ -167,6 +243,8 @@ class CourseImporter
                 ]);
             }
 
+            $this->importThumbnail($course, $manifest, $root);
+
             if ($createdBy !== null) {
                 $course->enrollments()->firstOrCreate(
                     ['user_id' => $createdBy],
@@ -180,6 +258,37 @@ class CourseImporter
         });
     }
 
+    /**
+     * @param  array<string, mixed>  $manifest
+     */
+    private function importThumbnail(Course $course, array $manifest, ?string $root): void
+    {
+        $file = $manifest['thumbnail'] ?? null;
+
+        if ($root === null || $file === null) {
+            return;
+        }
+
+        $sourcePath = $root.'/'.$file;
+
+        if (! file_exists($sourcePath)) {
+            return;
+        }
+
+        $extension = pathinfo($file, PATHINFO_EXTENSION) ?: 'png';
+        $storedPath = "course-thumbnails/{$course->slug}.{$extension}";
+
+        if ($course->thumbnail && $course->thumbnail !== $storedPath) {
+            Storage::disk('public')->delete($course->thumbnail);
+        }
+
+        Storage::disk('public')->put($storedPath, $this->readFile($sourcePath));
+        $course->update(['thumbnail' => $storedPath]);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lessonsData
+     */
     private function syncLessons(Course $course, array $lessonsData, ?string $root): void
     {
         $keepSlugs = array_column($lessonsData, 'slug');
@@ -196,51 +305,47 @@ class CourseImporter
         }
     }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $pagesData
+     */
     private function syncPages(Lesson $lesson, array $pagesData, ?string $root, int $courseId): void
     {
         $keepSlugs = array_column($pagesData, 'slug');
         $lesson->pages()->whereNotIn('slug', $keepSlugs)->get()->each(fn ($page) => $page->delete());
 
         foreach ($pagesData as $pageData) {
-            if ($root === null) {
-                $body = '';
+            $pagePath = $root !== null ? $root.'/'.($pageData['file'] ?? '') : null;
+
+            if ($pagePath === null || ! is_file($pagePath)) {
+                // Manifest-only import, or a package with a missing page file
+                // (already surfaced as a warning in the wizard's plan step):
+                // create the page empty rather than failing halfway through.
+                $markdown = '';
                 $narrationChanges = [];
             } else {
-                $pagePath = $root.'/'.$pageData['file'];
-                $body = $this->rewriteImageSources($this->pageBodyHtml($pagePath), $root, $courseId);
+                $markdown = $this->rewriteImageSources($this->pageBodyMarkdown($pagePath), $root, $courseId);
 
                 $narrationChanges = array_filter([
                     'narration_text' => $this->readSiblingFile($pagePath, 'txt'),
-                    'narration_audio_path' => $this->importNarrationAudio($pagePath, $courseId),
+                    'narration_audio_path' => $this->importNarrationAudio($pagePath, $courseId, $lesson->slug, $pageData['slug']),
                 ], fn ($value) => $value !== null);
             }
 
-            $page = $lesson->pages()->where('slug', $pageData['slug'])->first();
-
-            if ($page) {
-                $page->update([
+            $lesson->pages()->updateOrCreate(
+                ['slug' => $pageData['slug']],
+                [
                     'title' => $pageData['title'],
                     'order' => $pageData['order'] ?? 0,
+                    'markdown' => $markdown,
                     ...$narrationChanges,
-                ]);
-            } else {
-                $page = $lesson->pages()->create([
-                    'title' => $pageData['title'],
-                    'slug' => $pageData['slug'],
-                    'order' => $pageData['order'] ?? 0,
-                    ...$narrationChanges,
-                ]);
-            }
-
-            $page->contentBlocks()->delete();
-            $page->contentBlocks()->create([
-                'type' => ContentBlockType::TextBlock,
-                'data' => ['html' => $body],
-                'order' => 0,
-            ]);
+                ],
+            );
         }
     }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $questionsData
+     */
     private function syncQuestions(Lesson $lesson, array $questionsData): void
     {
         $lesson->questions()->delete();
@@ -265,8 +370,10 @@ class CourseImporter
      * Build a course manifest from a directory of loose/foldered .md files (no course.json):
      * each top-level folder becomes a lesson (one page per .md file inside it, folder = lesson),
      * and any .md file directly at the root becomes its own single-page lesson.
+     *
+     * @return array<string, mixed>
      */
-    private function synthesizeManifest(string $root, string $titleFallback): array
+    public function synthesizeManifest(string $root, string $titleFallback): array
     {
         $lessons = [];
 
@@ -331,6 +438,7 @@ class CourseImporter
         $title = Str::headline($titleFallback) ?: $titleFallback;
 
         return [
+            'format_version' => self::FORMAT_VERSION,
             'title' => $title,
             'slug' => Str::slug($title) ?: Str::random(8),
             'description' => null,
@@ -344,7 +452,7 @@ class CourseImporter
      * .md content is typically one level deeper than the extracted zip root, wrapped in a
      * single top-level folder (the zip's own name). Unwrap one such level if present.
      */
-    private function resolveMarkdownRoot(string $extractPath): string
+    public function resolveMarkdownRoot(string $extractPath): string
     {
         if ($this->hasMarkdownContent($extractPath)) {
             return $extractPath;
@@ -385,7 +493,7 @@ class CourseImporter
         return $contents;
     }
 
-    private function locateManifestRoot(string $extractPath): ?string
+    public function locateManifestRoot(string $extractPath): ?string
     {
         if (file_exists($extractPath.'/course.json')) {
             return $extractPath;
@@ -411,7 +519,7 @@ class CourseImporter
         return trim($this->readFile($path)) ?: null;
     }
 
-    private function importNarrationAudio(string $pagePath, int $courseId): ?string
+    private function importNarrationAudio(string $pagePath, int $courseId, string $lessonSlug, string $pageSlug): ?string
     {
         $path = preg_replace('/\.(html|md)$/i', '.mp3', $pagePath);
 
@@ -419,21 +527,23 @@ class CourseImporter
             return null;
         }
 
-        $storedPath = "course-media/{$courseId}/narration/".Str::random(12).'.mp3';
+        $storedPath = "course-media/{$courseId}/narration/{$lessonSlug}-{$pageSlug}.mp3";
         Storage::disk('public')->put($storedPath, $this->readFile($path));
 
         return $storedPath;
     }
 
     /**
-     * Resolve a page's content file (.md or legacy .html) into its HTML body.
+     * Resolve a page's content file into Markdown. Legacy .html files are kept as
+     * raw HTML inside the markdown column — the CommonMark renderer passes raw
+     * HTML through, so they display identically.
      */
-    private function pageBodyHtml(string $path): string
+    private function pageBodyMarkdown(string $path): string
     {
         $contents = $this->readFile($path);
 
         if (Str::endsWith(strtolower($path), '.md')) {
-            return Str::markdown($contents);
+            return trim($contents);
         }
 
         return $this->extractBody($contents);
@@ -448,23 +558,71 @@ class CourseImporter
         return trim($html);
     }
 
-    private function rewriteImageSources(string $html, string $root, int $courseId): string
+    /**
+     * Rewrite package-relative image references (images/foo.png) — both HTML
+     * src="" attributes and Markdown ![](...) links — to the public storage URL
+     * of the imported media file. Stored names are deterministic: the original
+     * basename, numbered only on collision within one import run.
+     */
+    private function rewriteImageSources(string $markdown, string $root, int $courseId): string
     {
-        return preg_replace_callback(
-            '/src="images\/([^"]+)"/i',
-            function (array $matches) use ($root, $courseId) {
-                $sourcePath = $root.'/images/'.$matches[1];
+        $rewrite = function (array $matches) use ($root, $courseId) {
+            [$full, $prefix, $relative, $suffix] = $matches;
 
-                if (! file_exists($sourcePath)) {
-                    return $matches[0];
-                }
+            $sourcePath = $root.'/images/'.$relative;
 
-                $storedPath = "course-media/{$courseId}/".Str::random(12).'-'.basename($matches[1]);
-                Storage::disk('public')->put($storedPath, $this->readFile($sourcePath));
+            if (! file_exists($sourcePath)) {
+                return $full;
+            }
 
-                return 'src="'.Storage::disk('public')->url($storedPath).'"';
-            },
-            $html
-        ) ?? $html;
+            $storedPath = $this->storeMedia($sourcePath, "course-media/{$courseId}/images", basename($relative));
+
+            // Host-relative on purpose: exports must stay importable across hosts.
+            return $prefix.'/storage/'.$storedPath.$suffix;
+        };
+
+        $markdown = preg_replace_callback('/(src=")images\/([^"]+)(")/i', $rewrite, $markdown) ?? $markdown;
+
+        return preg_replace_callback('/(\]\()images\/([^)\s]+)(\))/', $rewrite, $markdown) ?? $markdown;
+    }
+
+    /**
+     * Store a media file under a deterministic name: the original basename,
+     * suffixed with -1, -2, … only when a different source file already claimed
+     * that name during this import run.
+     */
+    private function storeMedia(string $sourcePath, string $directory, string $basename): string
+    {
+        $base = pathinfo($basename, PATHINFO_FILENAME);
+        $extension = pathinfo($basename, PATHINFO_EXTENSION);
+
+        $candidate = $basename;
+        $i = 1;
+
+        while (isset($this->claimedMediaPaths["{$directory}/{$candidate}"])
+            && $this->claimedMediaPaths["{$directory}/{$candidate}"] !== $sourcePath) {
+            $candidate = $extension ? "{$base}-{$i}.{$extension}" : "{$base}-{$i}";
+            $i++;
+        }
+
+        $storedPath = "{$directory}/{$candidate}";
+        $this->claimedMediaPaths[$storedPath] = $sourcePath;
+
+        Storage::disk('public')->put($storedPath, $this->readFile($sourcePath));
+
+        return $storedPath;
+    }
+
+    private function uniquePageSlug(Lesson $lesson, string $slug): string
+    {
+        $candidate = $slug;
+        $i = 1;
+
+        while ($lesson->pages()->where('slug', $candidate)->exists()) {
+            $candidate = "{$slug}-{$i}";
+            $i++;
+        }
+
+        return $candidate;
     }
 }

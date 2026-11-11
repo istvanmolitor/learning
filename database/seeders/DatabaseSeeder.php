@@ -6,13 +6,10 @@ use App\Models\Course;
 use App\Models\Group;
 use App\Models\Permission;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
@@ -57,47 +54,28 @@ class DatabaseSeeder extends Seeder
             'order' => 0,
         ]);
 
-        $page1 = $lesson1->pages()->create([
+        $lesson1->pages()->create([
             'title' => 'Mi a HTML?',
             'slug' => 'mi-a-html',
             'order' => 0,
+            'markdown' => <<<'MD'
+            # Mi a HTML?
+
+            A HTML (HyperText Markup Language) a weboldalak szerkezetét leíró jelölőnyelv.
+
+            <iframe width="560" height="315" src="https://www.youtube.com/embed/UB1O30fR-EE" title="HTML Crash Course" frameborder="0" allowfullscreen></iframe>
+            MD,
         ]);
 
-        $page1->contentBlocks()->createMany([
-            [
-                'type' => 'heading',
-                'data' => ['text' => 'Mi a HTML?', 'level' => 1],
-                'order' => 0,
-            ],
-            [
-                'type' => 'text',
-                'data' => ['html' => '<p>A HTML (HyperText Markup Language) a weboldalak szerkezetét leíró jelölőnyelv.</p>'],
-                'order' => 1,
-            ],
-            [
-                'type' => 'youtube_video',
-                'data' => ['video_id' => 'UB1O30fR-EE', 'title' => 'HTML Crash Course'],
-                'order' => 2,
-            ],
-        ]);
-
-        $page2 = $lesson1->pages()->create([
+        $lesson1->pages()->create([
             'title' => 'Alapvető HTML elemek',
             'slug' => 'alapveto-html-elemek',
             'order' => 1,
-        ]);
+            'markdown' => <<<'MD'
+            ## Gyakran használt elemek
 
-        $page2->contentBlocks()->createMany([
-            [
-                'type' => 'heading',
-                'data' => ['text' => 'Gyakran használt elemek', 'level' => 2],
-                'order' => 0,
-            ],
-            [
-                'type' => 'text',
-                'data' => ['html' => '<p>Néhány alapvető elem: <code>&lt;div&gt;</code>, <code>&lt;p&gt;</code>, <code>&lt;a&gt;</code>, <code>&lt;img&gt;</code>.</p>'],
-                'order' => 1,
-            ],
+            Néhány alapvető elem: `<div>`, `<p>`, `<a>`, `<img>`.
+            MD,
         ]);
 
         $question1 = $lesson1->questions()->create([
@@ -117,23 +95,15 @@ class DatabaseSeeder extends Seeder
             'order' => 1,
         ]);
 
-        $page3 = $lesson2->pages()->create([
+        $lesson2->pages()->create([
             'title' => 'Mi a CSS?',
             'slug' => 'mi-a-css',
             'order' => 0,
-        ]);
+            'markdown' => <<<'MD'
+            # Mi a CSS?
 
-        $page3->contentBlocks()->createMany([
-            [
-                'type' => 'heading',
-                'data' => ['text' => 'Mi a CSS?', 'level' => 1],
-                'order' => 0,
-            ],
-            [
-                'type' => 'text',
-                'data' => ['html' => '<p>A CSS (Cascading Style Sheets) a weboldalak megjelenését, stílusát írja le.</p>'],
-                'order' => 1,
-            ],
+            A CSS (Cascading Style Sheets) a weboldalak megjelenését, stílusát írja le.
+            MD,
         ]);
 
         $question2 = $lesson2->questions()->create([

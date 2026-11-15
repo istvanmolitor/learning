@@ -2,8 +2,11 @@
 
 namespace App\Services\CourseTransfer;
 
+use App\Blocks\BlockRegistry;
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Models\Page;
+use App\Services\Blocks\PageBlockSync;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -15,6 +18,11 @@ use ZipArchive;
 class CourseImporter
 {
     public const FORMAT_VERSION = 1;
+
+    public function __construct(
+        private readonly BlockRegistry $registry,
+        private readonly PageBlockSync $blockSync,
+    ) {}
 
     /**
      * Media target paths already claimed during this import run, used to keep
@@ -315,15 +323,28 @@ class CourseImporter
 
         foreach ($pagesData as $pageData) {
             $pagePath = $root !== null ? $root.'/'.($pageData['file'] ?? '') : null;
+            $isBlockPage = $pagePath !== null && Str::endsWith(strtolower($pagePath), '.json');
 
             if ($pagePath === null || ! is_file($pagePath)) {
                 // Manifest-only import, or a package with a missing page file
                 // (already surfaced as a warning in the wizard's plan step):
                 // create the page empty rather than failing halfway through.
                 $markdown = '';
+                $blocks = null;
                 $narrationChanges = [];
+            } elseif ($isBlockPage) {
+                // markdown/body_html are filled in afterwards by PageBlockSync,
+                // from the blocks this page file describes.
+                $markdown = '';
+                $blocks = $this->decodeBlockPage($pagePath, $root, $courseId);
+
+                $narrationChanges = array_filter([
+                    'narration_text' => $this->readSiblingFile($pagePath, 'txt'),
+                    'narration_audio_path' => $this->importNarrationAudio($pagePath, $courseId, $lesson->slug, $pageData['slug']),
+                ], fn ($value) => $value !== null);
             } else {
                 $markdown = $this->rewriteImageSources($this->pageBodyMarkdown($pagePath), $root, $courseId);
+                $blocks = null;
 
                 $narrationChanges = array_filter([
                     'narration_text' => $this->readSiblingFile($pagePath, 'txt'),
@@ -331,7 +352,7 @@ class CourseImporter
                 ], fn ($value) => $value !== null);
             }
 
-            $lesson->pages()->updateOrCreate(
+            $page = $lesson->pages()->updateOrCreate(
                 ['slug' => $pageData['slug']],
                 [
                     'title' => $pageData['title'],
@@ -340,6 +361,10 @@ class CourseImporter
                     ...$narrationChanges,
                 ],
             );
+
+            if ($blocks !== null) {
+                $this->replacePageBlocks($page, $blocks);
+            }
         }
     }
 
@@ -508,9 +533,70 @@ class CourseImporter
         return null;
     }
 
+    /**
+     * @return array<int, array{type: string, data: array<string, mixed>}>
+     */
+    private function decodeBlockPage(string $pagePath, string $root, int $courseId): array
+    {
+        $decoded = json_decode($this->readFile($pagePath), true, flags: JSON_THROW_ON_ERROR);
+        $blocks = [];
+
+        foreach ($decoded['blocks'] ?? [] as $blockData) {
+            $type = $blockData['type'] ?? 'unknown';
+            $data = is_array($blockData['data'] ?? null) ? $blockData['data'] : [];
+
+            $blocks[] = [
+                'type' => $type,
+                'data' => $this->registry->resolve($type)->importData(
+                    $data,
+                    fn (string $path) => $this->importBlockMedia($path, $root, $courseId),
+                ),
+            ];
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * The inverse of CourseExporter::renderPageBlocks()'s media rewrite: a
+     * package-relative media/… (or, leniently, the legacy images/…) path is
+     * copied into storage and replaced with the resulting storage path. An
+     * already-external URL, or a reference to a file the package doesn't
+     * actually contain, is left untouched.
+     */
+    private function importBlockMedia(string $path, string $root, int $courseId): string
+    {
+        if ($path === '' || preg_match('#^https?://#i', $path) === 1) {
+            return $path;
+        }
+
+        $relative = Str::startsWith($path, ['media/', 'images/']) ? $path : 'media/'.$path;
+        $sourcePath = $root.'/'.$relative;
+
+        if (! file_exists($sourcePath)) {
+            return $path;
+        }
+
+        return $this->storeMedia($sourcePath, "course-media/{$courseId}/blocks", basename($relative));
+    }
+
+    /**
+     * @param  array<int, array{type: string, data: array<string, mixed>}>  $blocks
+     */
+    private function replacePageBlocks(Page $page, array $blocks): void
+    {
+        $page->blocks()->delete();
+
+        foreach ($blocks as $order => $block) {
+            $page->blocks()->create(['type' => $block['type'], 'order' => $order, 'data' => $block['data']]);
+        }
+
+        $this->blockSync->resync($page);
+    }
+
     private function readSiblingFile(string $pagePath, string $extension): ?string
     {
-        $path = preg_replace('/\.(html|md)$/i', '.'.$extension, $pagePath);
+        $path = preg_replace('/\.(html|md|json)$/i', '.'.$extension, $pagePath);
 
         if (! file_exists($path)) {
             return null;
@@ -521,7 +607,7 @@ class CourseImporter
 
     private function importNarrationAudio(string $pagePath, int $courseId, string $lessonSlug, string $pageSlug): ?string
     {
-        $path = preg_replace('/\.(html|md)$/i', '.mp3', $pagePath);
+        $path = preg_replace('/\.(html|md|json)$/i', '.mp3', $pagePath);
 
         if (! file_exists($path)) {
             return null;

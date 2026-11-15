@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
-import { CheckCircle2, ChevronLeft, ChevronRight } from '@lucide/vue';
+import { Head, Link } from '@inertiajs/vue3';
 import CourseController from '@/actions/App/Http/Controllers/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/LessonController';
-import PageController from '@/actions/App/Http/Controllers/PageController';
-import { Button } from '@/components/ui/button';
+import BlockRenderer from '@/components/blocks/BlockRenderer.vue';
+import PagePager from '@/components/courses/PagePager.vue';
+import type { ContentBlock } from '@/lib/blocks/types';
 
 const props = defineProps<{
     course: { title: string; slug: string };
@@ -20,7 +20,9 @@ const props = defineProps<{
         total: number;
         previous: { slug: string; title: string } | null;
         next: { slug: string; title: string } | null;
+        dots: { slug: string; is_completed: boolean }[];
     };
+    blocks: ContentBlock[];
     contentHtml: string;
 }>();
 
@@ -52,26 +54,6 @@ defineOptions({
                     {{ pagination.index }}. / {{ pagination.total }} oldal
                 </p>
             </div>
-
-            <Form
-                v-bind="
-                    PageController.complete.form([
-                        course.slug,
-                        lesson.slug,
-                        page.slug,
-                    ])
-                "
-            >
-                <Button v-if="!page.is_completed" type="submit"
-                    >Oldal elvégzése</Button
-                >
-                <span
-                    v-else
-                    class="flex items-center gap-1 text-sm text-green-600"
-                >
-                    <CheckCircle2 class="size-4" /> Oldal elvégezve
-                </span>
-            </Form>
         </div>
 
         <h1 class="text-2xl font-semibold tracking-tight">{{ page.title }}</h1>
@@ -83,42 +65,18 @@ defineOptions({
             :src="page.narration_audio_url"
         />
 
+        <BlockRenderer v-if="blocks.length" :blocks="blocks" />
         <div
+            v-else
             class="prose prose-neutral max-w-none dark:prose-invert"
             v-html="contentHtml"
         />
 
-        <div class="flex items-center justify-between border-t pt-4">
-            <Link
-                v-if="pagination.previous"
-                :href="
-                    PageController.show([
-                        course.slug,
-                        lesson.slug,
-                        pagination.previous.slug,
-                    ])
-                "
-                class="flex items-center gap-1 text-sm text-muted-foreground hover:underline"
-            >
-                <ChevronLeft class="size-4" /> {{ pagination.previous.title }}
-            </Link>
-            <span v-else />
-
-            <Link
-                :href="
-                    pagination.next
-                        ? PageController.show([
-                              course.slug,
-                              lesson.slug,
-                              pagination.next.slug,
-                          ])
-                        : LessonController.questions([course.slug, lesson.slug])
-                "
-                class="flex items-center gap-1 text-sm text-muted-foreground hover:underline"
-            >
-                {{ pagination.next ? pagination.next.title : 'Teszt kérdések' }}
-                <ChevronRight class="size-4" />
-            </Link>
-        </div>
+        <PagePager
+            :course="course"
+            :lesson="lesson"
+            :page="page"
+            :pagination="pagination"
+        />
     </div>
 </template>

@@ -172,3 +172,18 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Content blocks (resources/js/components/blocks) — scroll-reveal entrance.
+   Disabled entirely via useRevealOnScroll() when the visitor prefers
+   reduced motion, so no media query is needed here. */
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+        opacity 0.5s ease,
+        transform 0.5s ease;
+}
+.reveal-on-scroll.is-visible {
+    opacity: 1;
+    transform: none;
+}

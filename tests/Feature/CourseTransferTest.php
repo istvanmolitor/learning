@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\User;
+use App\Services\Blocks\PageBlockSync;
 use App\Services\CourseTransfer\CourseExporter;
 use App\Services\CourseTransfer\CourseImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -132,6 +133,55 @@ class CourseTransferTest extends TestCase
         @unlink($secondZip);
 
         $this->assertSame(array_keys($firstEntries), array_keys($secondEntries), 'A két export fájllistájának azonosnak kell lennie.');
+
+        foreach ($firstEntries as $name => $contents) {
+            $this->assertSame($contents, $secondEntries[$name], "Eltérő tartalom a csomagban: {$name}");
+        }
+    }
+
+    public function test_block_pages_export_as_json_and_survive_an_import_export_round_trip(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('course-media/1/abra.png', 'image-bytes');
+
+        $course = Course::create(['title' => 'Blokkos roundtrip', 'slug' => 'blokkos-roundtrip', 'is_published' => true, 'order' => 0]);
+        $lesson = $course->lessons()->create(['title' => 'Lecke 1', 'slug' => 'lecke-1', 'order' => 0]);
+        $page = $lesson->pages()->create(['title' => 'Oldal 1', 'slug' => 'oldal-1', 'order' => 0, 'markdown' => '']);
+
+        $page->blocks()->createMany([
+            ['type' => 'heading', 'order' => 0, 'data' => ['level' => 2, 'text' => 'Cím']],
+            ['type' => 'image', 'order' => 1, 'data' => ['path' => 'course-media/1/abra.png', 'alt' => 'ábra', 'size' => 'normal']],
+            ['type' => 'video', 'order' => 2, 'data' => ['source' => 'youtube', 'video_id' => 'abc123', 'title' => 'Videó']],
+        ]);
+        app(PageBlockSync::class)->resync($page);
+
+        $firstZip = app(CourseExporter::class)->export($course);
+        $firstEntries = $this->zipEntries($firstZip);
+
+        $this->assertArrayHasKey('blokkos-roundtrip/pages/lecke-1/oldal-1.json', $firstEntries);
+        $manifest = json_decode($firstEntries['blokkos-roundtrip/course.json'], true);
+        $this->assertSame(2, $manifest['format_version'], 'Blokk-oldalt tartalmazó export format_version-je 2 legyen.');
+
+        $pageJson = json_decode($firstEntries['blokkos-roundtrip/pages/lecke-1/oldal-1.json'], true);
+        $this->assertSame('image', $pageJson['blocks'][1]['type']);
+        $this->assertStringStartsWith('media/', $pageJson['blocks'][1]['data']['path'], 'A kép útvonalnak csomag-relatívvá kell válnia.');
+
+        $course->lessons()->get()->each(fn ($l) => $l->delete());
+        $course->delete();
+
+        $uploaded = new UploadedFile($firstZip, 'blokkos-roundtrip.zip', 'application/zip', null, true);
+        $imported = app(CourseImporter::class)->import($uploaded);
+        @unlink($firstZip);
+
+        $importedPage = $imported->fresh()->lessons->first()->pages->first();
+        $this->assertCount(3, $importedPage->blocks);
+        $this->assertSame('abc123', $importedPage->blocks->firstWhere('type', 'video')->data['video_id']);
+
+        $secondZip = app(CourseExporter::class)->export($imported->fresh());
+        $secondEntries = $this->zipEntries($secondZip);
+        @unlink($secondZip);
+
+        $this->assertSame(array_keys($firstEntries), array_keys($secondEntries));
 
         foreach ($firstEntries as $name => $contents) {
             $this->assertSame($contents, $secondEntries[$name], "Eltérő tartalom a csomagban: {$name}");

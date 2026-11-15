@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terv — Vizuális, animált tananyagok (blokk-alapú rendszer)</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --accent: #2563eb;
+    --radius: 12px;
+    /* A ValStat jegyzet színrendszere */
+    --c-def: #2563eb;      /* definíció – kék */
+    --c-tetel: #059669;    /* tétel – zöld */
+    --c-keplet: #d97706;   /* kulcsképlet – sárga/borostyán */
+    --c-pelda: #ea580c;    /* példa – narancs */
+    --c-szemlelet: #0d9488;/* szemléletesen – türkiz */
+    --c-vigyazz: #dc2626;  /* vigyázz – piros */
+    --c-roviden: #64748b;  /* röviden – szürke */
+    --c-extra: #7c3aed;    /* kiegészítés – lila */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.25rem 6rem; }
+  header.hero {
+    background: linear-gradient(135deg, #312e81, #4f46e5 55%, #0ea5e9);
+    color: #fff;
+    padding: 3.5rem 1.25rem 3rem;
+  }
+  header.hero .wrap { padding: 0 1.25rem; }
+  header.hero h1 { font-size: 2rem; margin: 0 0 .5rem; letter-spacing: -.02em; }
+  header.hero p { margin: 0; max-width: 42rem; opacity: .9; font-size: 1.05rem; }
+  header.hero .meta { margin-top: 1.25rem; font-size: .85rem; opacity: .75; }
+
+  nav.toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.5rem;
+    margin: -2rem 0 2.5rem;
+    box-shadow: 0 10px 30px -15px rgba(15, 23, 42, .25);
+    position: relative;
+  }
+  nav.toc ol { margin: .25rem 0 0; padding-left: 1.25rem; columns: 2; gap: 2.5rem; }
+  nav.toc li { margin: .2rem 0; break-inside: avoid; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+
+  h2 {
+    font-size: 1.5rem;
+    margin: 3.5rem 0 1rem;
+    padding-bottom: .4rem;
+    border-bottom: 2px solid var(--border);
+    letter-spacing: -.01em;
+  }
+  h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.8rem; height: 1.8rem; margin-right: .6rem;
+    background: var(--accent); color: #fff; border-radius: 8px;
+    font-size: .95rem; vertical-align: -3px;
+  }
+  h3 { font-size: 1.15rem; margin: 2rem 0 .6rem; }
+  h4 { font-size: 1rem; margin: 1.5rem 0 .4rem; }
+  p.lead { font-size: 1.08rem; color: #334155; }
+  code {
+    background: #eef2f7; border: 1px solid var(--border);
+    padding: .1em .35em; border-radius: 5px;
+    font-family: ui-monospace, "Cascadia Code", Menlo, monospace;
+    font-size: .88em;
+  }
+  pre {
+    background: #0f172a; color: #e2e8f0;
+    padding: 1rem 1.25rem; border-radius: var(--radius);
+    overflow-x: auto; font-size: .85rem; line-height: 1.55;
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+  pre .cm { color: #64748b; }
+  pre .kw { color: #7dd3fc; }
+  pre .str { color: #86efac; }
+
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .92rem; background: var(--surface); }
+  th, td { border: 1px solid var(--border); padding: .5rem .75rem; text-align: left; vertical-align: top; }
+  th { background: #f1f5f9; }
+  td code { white-space: nowrap; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1rem 0;
+  }
+  .note {
+    border-left: 4px solid var(--c-extra);
+    background: #f5f3ff; border-radius: 0 var(--radius) var(--radius) 0;
+    padding: .9rem 1.25rem; margin: 1rem 0; font-size: .95rem;
+  }
+  .warn {
+    border-left: 4px solid var(--c-vigyazz);
+    background: #fef2f2; border-radius: 0 var(--radius) var(--radius) 0;
+    padding: .9rem 1.25rem; margin: 1rem 0; font-size: .95rem;
+  }
+  .pill {
+    display: inline-block; padding: .1rem .55rem; border-radius: 999px;
+    font-size: .75rem; font-weight: 600; letter-spacing: .02em;
+  }
+  .pill.green { background: #dcfce7; color: #166534; }
+  .pill.amber { background: #fef3c7; color: #92400e; }
+  .pill.blue  { background: #dbeafe; color: #1e40af; }
+
+  /* ========== ÉLŐ DEMO: callout dobozok ========== */
+  .demo-frame {
+    border: 2px dashed #cbd5e1; border-radius: var(--radius);
+    padding: 1.5rem; margin: 1.25rem 0; background: var(--surface);
+    position: relative;
+  }
+  .demo-frame::before {
+    content: "ÉLŐ DEMO — így nézne ki a tanulói nézetben";
+    position: absolute; top: -0.7rem; left: 1rem;
+    background: var(--surface); padding: 0 .5rem;
+    font-size: .7rem; font-weight: 700; letter-spacing: .08em; color: var(--muted);
+  }
+  .callout {
+    border: 1.5px solid; border-radius: 10px;
+    margin: 1rem 0; overflow: hidden;
+  }
+  .callout .head {
+    display: inline-block; margin: -1px 0 0 -1px;
+    padding: .15rem .7rem .2rem; border-radius: 0 0 8px 0;
+    color: #fff; font-size: .72rem; font-weight: 700; letter-spacing: .05em;
+  }
+  .callout .body { padding: .5rem 1rem .8rem; font-size: .95rem; }
+  .callout.def       { border-color: var(--c-def);       background: #eff6ff; }
+  .callout.def .head { background: var(--c-def); }
+  .callout.tetel       { border-color: var(--c-tetel);   background: #ecfdf5; }
+  .callout.tetel .head { background: var(--c-tetel); }
+  .callout.keplet       { border-color: var(--c-keplet); background: #fffbeb; }
+  .callout.keplet .head { background: var(--c-keplet); }
+  .callout.pelda       { border-color: var(--c-pelda);   background: #fff7ed; }
+  .callout.pelda .head { background: var(--c-pelda); }
+  .callout.vigyazz       { border-color: var(--c-vigyazz); background: #fef2f2; }
+  .callout.vigyazz .head { background: var(--c-vigyazz); }
+  .callout.extra       { border-color: var(--c-extra); border-style: dashed; background: #f5f3ff; }
+  .callout.extra .head { background: var(--c-extra); }
+  .formula {
+    text-align: center; font-family: "STIX Two Math", Georgia, serif;
+    font-size: 1.15rem; padding: .4rem 0; font-style: italic;
+  }
+
+  /* scroll-reveal animáció a demókban */
+  .reveal-on-scroll { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal-on-scroll.visible { opacity: 1; transform: none; }
+
+  /* ========== ÉLŐ DEMO: flashcard ========== */
+  .flashcards { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .flashcard { perspective: 800px; width: 180px; height: 120px; cursor: pointer; }
+  .flashcard .inner {
+    width: 100%; height: 100%; position: relative;
+    transform-style: preserve-3d; transition: transform .5s;
+  }
+  .flashcard.flipped .inner { transform: rotateY(180deg); }
+  .flashcard .face {
+    position: absolute; inset: 0; backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    border-radius: 10px; padding: .75rem; font-size: .88rem;
+  }
+  .flashcard .front { background: linear-gradient(135deg, #2563eb, #0ea5e9); color: #fff; font-weight: 600; }
+  .flashcard .back { background: #fff; border: 1.5px solid var(--c-def); transform: rotateY(180deg); }
+
+  /* ========== ÉLŐ DEMO: stepper ========== */
+  .stepper .step { display: none; padding: 1rem; background: #f1f5f9; border-radius: 10px; min-height: 4.5rem; }
+  .stepper .step.active { display: block; animation: fadeIn .35s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+  .stepper .controls { display: flex; align-items: center; gap: .75rem; margin-top: .75rem; }
+  .stepper button {
+    border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
+    padding: .35rem .9rem; cursor: pointer; font-size: .88rem;
+  }
+  .stepper button:hover { background: #f1f5f9; }
+  .stepper .dots { display: flex; gap: .4rem; }
+  .stepper .dot { width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; transition: background .3s; }
+  .stepper .dot.active { background: var(--accent); }
+
+  /* ========== ÉLŐ DEMO: animált chart ========== */
+  .chart { display: flex; align-items: flex-end; gap: 1.25rem; height: 150px; padding: 0 .5rem; }
+  .chart .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: .35rem; height: 100%; justify-content: flex-end; }
+  .chart .bar {
+    width: 100%; max-width: 70px; border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, #38bdf8, #2563eb);
+    height: 0; transition: height 1s cubic-bezier(.22,1,.36,1);
+  }
+  .chart .lbl { font-size: .78rem; color: var(--muted); }
+
+  /* ========== Szerkesztő mockup ========== */
+  .mock {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; margin: 1.25rem 0; font-size: .8rem;
+    box-shadow: 0 14px 40px -20px rgba(15,23,42,.3);
+    background: var(--surface);
+  }
+  .mock .titlebar {
+    background: #1e293b; color: #cbd5e1; padding: .45rem .9rem;
+    display: flex; align-items: center; gap: .5rem; font-size: .75rem;
+  }
+  .mock .titlebar .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .mock .cols { display: grid; grid-template-columns: 200px 1fr 1fr; min-height: 420px; }
+  .mock .tree { background: #f8fafc; border-right: 1px solid var(--border); padding: .75rem; }
+  .mock .tree .lesson { font-weight: 700; margin: .5rem 0 .2rem; }
+  .mock .tree .pg { padding: .2rem .5rem; border-radius: 6px; color: #475569; }
+  .mock .tree .pg.sel { background: #dbeafe; color: #1e40af; font-weight: 600; }
+  .mock .blocks { padding: .9rem; border-right: 1px solid var(--border); overflow: hidden; position: relative; }
+  .mock .blocks h5, .mock .preview h5 {
+    margin: 0 0 .6rem; font-size: .7rem; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted);
+  }
+  .mock .block {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: .5rem .6rem; margin: .5rem 0; background: var(--surface); position: relative;
+  }
+  .mock .block .tag {
+    font-size: .62rem; font-weight: 700; letter-spacing: .05em;
+    padding: .05rem .4rem; border-radius: 4px; color: #fff;
+  }
+  .mock .block .grip { position: absolute; right: .5rem; top: .45rem; color: #cbd5e1; cursor: grab; }
+  .mock .block .saved { position: absolute; right: 1.6rem; top: .45rem; color: #059669; font-size: .62rem; }
+  .mock .block.sel { border-color: var(--accent); box-shadow: 0 0 0 2px #bfdbfe; }
+  .mock .addline { text-align: center; color: var(--accent); margin: .4rem 0; font-weight: 600; cursor: pointer; }
+  .mock .palette {
+    position: absolute; left: 3rem; bottom: 2.2rem; width: 220px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 12px 30px -10px rgba(15,23,42,.35); padding: .4rem; z-index: 2;
+  }
+  .mock .palette .it { display: flex; gap: .5rem; align-items: center; padding: .3rem .5rem; border-radius: 6px; }
+  .mock .palette .it:first-child { background: #eff6ff; }
+  .mock .palette .sw { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+  .mock .preview { padding: .9rem; background: #fcfcfd; }
+  .mock .preview .callout { margin: .5rem 0; font-size: .78rem; }
+  .mock .preview .callout .body { padding: .3rem .6rem .5rem; font-size: .75rem; }
+  .mock .preview .callout .head { font-size: .6rem; }
+  .mock .toolbar {
+    display: flex; gap: .5rem; padding: .5rem .9rem; border-bottom: 1px solid var(--border);
+    background: #f8fafc; align-items: center;
+  }
+  .mock .toolbar .btn {
+    border: 1px solid var(--border); border-radius: 6px; padding: .2rem .6rem; background: var(--surface);
+  }
+  .mock .toolbar .btn.on { background: #1e40af; color: #fff; border-color: #1e40af; }
+  .mock .toolbar .sp { flex: 1; }
+
+  .filetree { font-family: ui-monospace, Menlo, monospace; font-size: .85rem; line-height: 1.7; }
+  .filetree .new { color: #059669; font-weight: 700; }
+  .filetree .dim { color: var(--muted); }
+
+  .phase { display: flex; gap: 1rem; margin: .75rem 0; align-items: flex-start; }
+  .phase .n {
+    flex: none; width: 2rem; height: 2rem; border-radius: 50%;
+    background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .9rem;
+  }
+  .phase.optional .n { background: #94a3b8; }
+  .phase .t strong { display: block; }
+  .phase .t small { color: var(--muted); }
+
+  .arch { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 1rem 0; font-size: .85rem; }
+  .arch .node {
+    background: var(--surface); border: 1.5px solid var(--accent);
+    border-radius: 8px; padding: .4rem .8rem; font-weight: 600;
+  }
+  .arch .node.dim { border-color: var(--border); font-weight: 400; color: var(--muted); }
+  .arch .arr { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>Vizuális, animált tananyagok — blokk-alapú rendszer</h1>
+    <p>Terv v2: a tananyag <strong>típusos blokkok</strong> sorozata. A blokkok saját adatbázis-táblában élnek, minden blokktípusnak saját PHP osztálya van (validálás, render, export/import logika), a cserecsomagban JSON oldalfájlok utaznak — a régi <code>.md</code>/<code>.html</code> csomagok importja konverterrel marad kompatibilis.</p>
+    <div class="meta">learning projekt · 2026-11-15 · inspiráció: a ValStat-jegyzet dobozos felépítése (nem előírás) · a korábbi (Markdown-first) tervet felülírja</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <strong>Tartalom</strong>
+  <ol>
+    <li><a href="#cel">Cél és architektúra-döntés</a></li>
+    <li><a href="#vizual">Vizuális rendszer (élő demókkal)</a></li>
+    <li><a href="#tarolas">Tárolás — a blokk-tábla</a></li>
+    <li><a href="#osztalyok">Blokktípus-osztályok (PHP)</a></li>
+    <li><a href="#katalogus">Blokk-katalógus</a></li>
+    <li><a href="#render">Megjelenítő pipeline</a></li>
+    <li><a href="#szerkeszto">Szerkesztő felület</a></li>
+    <li><a href="#export">Export: zip (JSON) + PDF/PPTX</a></li>
+    <li><a href="#import">Import és md/html kompatibilitás</a></li>
+    <li><a href="#agent">Course-builder agent frissítése</a></li>
+    <li><a href="#utemterv">Ütemterv és érintett fájlok</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="cel"><span class="num">1</span>Cél és architektúra-döntés</h2>
+
+<p class="lead">A cél: a tananyag <strong>látványos, animált, interaktív</strong> oldalakból álljon — színkódolt kiemelő dobozok (a ValStat-jegyzet dobozos felépítése az inspiráció, nem a követendő design), gazdag médiatartalom (kép, galéria, videó, hang), lapozható kártyák, léptethető levezetések, animált diagramok; a tudásmérés pedig változatlanul a lecke-végi, választ is tároló kérdéssor. A blokk-készlet nyitott: sokféle típus, és könnyen bővíthető. Az architektúra-váltás lényege: <strong>nem a Markdown az igazságforrás, hanem a blokk.</strong></p>
+
+<div class="card">
+  <strong>A döntés négy pillére:</strong>
+  <ol>
+    <li><strong>Az oldal = rendezett blokklista.</strong> Egy blokk egy típusból (<code>text</code>, <code>definicio</code>, <code>chart</code>, …) és egy típus-specifikus JSON payloadból áll. Nincs parsolás, nincs round-trip probléma: amit a szerkesztő mutat, az van az adatbázisban.</li>
+    <li><strong>A blokkok külön táblában</strong> (<code>content_blocks</code>) élnek, soronként egy blokk — így a blokk első osztályú entitás: egyenként menthető, sorrendezhető, mozgatható oldalak között, később verziózható/kommentelhető.</li>
+    <li><strong>Minden blokktípusnak saját PHP osztálya van</strong>, ami egy helyen írja le a típus teljes logikáját: payload-séma és validálás, degradált HTML render (cache/keresés/PPTX), export/import médiakezelés, md-konverzió. Új blokktípus felvétele = egy PHP osztály + egy Vue komponenspár, semmi más nem változik.</li>
+    <li><strong>A cserecsomagban JSON utazik:</strong> a zip oldalanként egy <code>.json</code> fájlt tartalmaz a blokklistával. A régi <code>.md</code> és <code>.html</code> csomagok importja <strong>konverzióval</strong> működik tovább (ld. 9. fejezet) — a kompatibilitás megmarad, csak már nem „ingyen" van, hanem egy jól tesztelt konverter biztosítja.</li>
+  </ol>
+</div>
+
+<div class="warn">
+  <strong>Amit ezzel tudatosan bevállalunk</strong> — ezek voltak a Markdown-érvek, mindhez tartozik ellenszer:
+  <ul style="margin:.4rem 0 0">
+    <li><em>LLM/agent-barátság:</em> az agent mostantól JSON-t generál. Ellenszer: a szöveges blokkok payloadja <strong>belül Markdown</strong> (félkövér, lista, képlet) — az agent a nehezét (folyó szöveg) továbbra is md-ben írja, csak blokk-keretben.</li>
+    <li><em>Diffelhetőség:</em> az export JSON-ja <strong>pretty-printed, stabil kulcssorrendű, blokkonként tördelt</strong> — git-ben értelmesen diffelhető marad.</li>
+    <li><em>Egyszer már kidobott <code>content_blocks</code>:</em> a régi tábla generikus „tartalomdarab" volt logika nélkül; az új modell lényege pont a típusonkénti osztály — a korábbi fájdalompont (mindenhol switch-elni a típusokon) megszűnik.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="vizual"><span class="num">2</span>Vizuális rendszer — élő demókkal</h2>
+
+<p class="lead">Az alábbi demók ebben a HTML-ben működnek: pontosan ezt a megjelenést kapná a tanulói nézet. Görgess lassan — a blokkok <em>scroll-reveal</em> animációval úsznak be, ahogy a kész oldalakon is. Minden demó-elem egy-egy blokktípus.</p>
+
+<h3>2.1 Callout-blokkok (kiemelő dobozok)</h3>
+<p>A ValStat-jegyzetből az <em>elvet</em> vesszük át: minden doboztípusnak állandó színe, ikonja és címkéje van, a tanuló ránézésre tudja, mit olvas. A konkrét design viszont saját: a platform design-rendszeréhez (shadcn/Tailwind tokenek, dark mode) igazított, modernebb megjelenés, és a <strong>variáns-készlet szabadon bővíthető</strong> — az alábbi demó csak egy lehetséges készletet mutat, nem kőbe vésett lista. A színek a <em>téma</em> részei, nem a tartalomé: a tananyag csak annyit tárol, hogy „ez egy definíció-doboz" — hogy az most épp kék, azt a projekt CSS-tokenjei döntik el (3. fejezet alapelve).</p>
+
+<div class="demo-frame">
+  <div class="callout def reveal-on-scroll">
+    <span class="head">📘 DEFINÍCIÓ · Várható érték <i>(expected value)</i></span>
+    <div class="body">A <strong>várható érték</strong> a valószínűségi változó értékeinek valószínűségekkel súlyozott átlaga. Jele: <i>M(ξ)</i>.</div>
+  </div>
+  <div class="callout keplet reveal-on-scroll">
+    <span class="head">🔑 KULCSKÉPLET</span>
+    <div class="body formula">M(ξ) = Σ x<sub>i</sub> · p<sub>i</sub></div>
+  </div>
+  <div class="callout tetel reveal-on-scroll">
+    <span class="head">★ TÉTEL · A várható érték linearitása</span>
+    <div class="body">Bármely ξ, η változókra és a, b konstansokra: <i>M(aξ + bη) = aM(ξ) + bM(η)</i>.</div>
+  </div>
+  <div class="callout pelda reveal-on-scroll">
+    <span class="head">✏️ PÉLDA · Kockadobás</span>
+    <div class="body">Egy szabályos dobókocka várható értéke: (1+2+3+4+5+6)/6 = <strong>3,5</strong> — olyan érték, amit a kocka soha nem dob.</div>
+  </div>
+  <div class="callout vigyazz reveal-on-scroll">
+    <span class="head">⚠ VIGYÁZZ!</span>
+    <div class="body">A várható érték <strong>nem</strong> a „legvalószínűbb érték" — az a módusz. Tipikus vizsgahiba a kettő összekeverése.</div>
+  </div>
+  <div class="callout extra reveal-on-scroll">
+    <span class="head">✦ KIEGÉSZÍTÉS</span>
+    <div class="body">Angol tankönyvekben és Pythonban <i>E[X]</i> jelölést látsz majd ugyanerre — a dobozon belül a szöveg <strong>félkövér</strong>, <em>dőlt</em>, <u>aláhúzott</u>, <mark style="background:#fef08a;padding:0 .15em">kiemelt</mark> lehet, és <a href="https://numpy.org/doc/stable/reference/generated/numpy.mean.html">linket</a> is tartalmazhat.</div>
+  </div>
+</div>
+
+<h3>2.2 Képletek</h3>
+<p>KaTeX kerül a megjelenítőbe: a szöveges blokkok Markdown-törzsében <code>$...$</code> (inline) és <code>$$...$$</code> (kiemelt) szintaxissal írható képlet, a <code>keplet</code> callout törzse pedig tipikusan egyetlen kiemelt képlet. A statisztika/matek tananyagok miatt alapkövetelmény.</p>
+
+<h3>2.3 Interaktív widget-blokkok</h3>
+<p>Minden widget egy-egy blokktípus strukturált payloaddal. Próbáld ki őket:</p>
+
+<div class="demo-frame">
+  <h4 style="margin-top:0">🃏 Fogalomkártyák (<code>flashcards</code> blokk) — kattints a kártyákra</h4>
+  <div class="flashcards">
+    <div class="flashcard" onclick="this.classList.toggle('flipped')">
+      <div class="inner">
+        <div class="face front">Szórás<br>D(ξ) = ?</div>
+        <div class="face back">Az átlagtól való átlagos eltérés: √M[(ξ−M(ξ))²]</div>
+      </div>
+    </div>
+    <div class="flashcard" onclick="this.classList.toggle('flipped')">
+      <div class="inner">
+        <div class="face front">Variancia<br>D²(ξ) = ?</div>
+        <div class="face back">A szórás négyzete — szórásnégyzet</div>
+      </div>
+    </div>
+    <div class="flashcard" onclick="this.classList.toggle('flipped')">
+      <div class="inner">
+        <div class="face front">Módusz</div>
+        <div class="face back">A leggyakoribb (legvalószínűbb) érték</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="demo-frame">
+  <h4 style="margin-top:0">🪜 Léptethető folyamat (<code>steps</code> blokk)</h4>
+  <div class="stepper" id="demo-stepper">
+    <div class="step active"><strong>1. Hipotézis felállítása</strong><br>H₀: a várható érték 3,5 — H₁: ettől eltér.</div>
+    <div class="step"><strong>2. Próbastatisztika kiszámítása</strong><br>A minta átlagából és szórásából t-értéket számolunk.</div>
+    <div class="step"><strong>3. Döntés</strong><br>Ha |t| nagyobb a kritikus értéknél, H₀-t elvetjük.</div>
+    <div class="controls">
+      <button onclick="stepperMove(-1)">← Előző</button>
+      <div class="dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span></div>
+      <button onclick="stepperMove(1)">Következő →</button>
+    </div>
+  </div>
+</div>
+
+<div class="demo-frame">
+  <h4 style="margin-top:0">📊 Animált diagram (<code>chart</code> blokk) — görgetéskor nő fel</h4>
+  <div class="chart" id="demo-chart">
+    <div class="bar-group"><div class="bar" data-h="30%"></div><span class="lbl">1-es</span></div>
+    <div class="bar-group"><div class="bar" data-h="55%"></div><span class="lbl">2-es</span></div>
+    <div class="bar-group"><div class="bar" data-h="90%"></div><span class="lbl">3-as</span></div>
+    <div class="bar-group"><div class="bar" data-h="70%"></div><span class="lbl">4-es</span></div>
+    <div class="bar-group"><div class="bar" data-h="40%"></div><span class="lbl">5-ös</span></div>
+  </div>
+  <p style="font-size:.8rem;color:var(--muted);margin:.5rem 0 0">Gyakorisági eloszlás — a tényleges implementációban tooltippel, tengelyekkel (saját SVG-komponens, nem külső lib).</p>
+</div>
+
+<h3>2.4 Média-blokkok</h3>
+<p>A tananyag ne csak szöveg + egy-egy kép legyen: a média első osztályú blokkcsalád. Kép képaláírással és lightboxszal, több képből álló galéria, videó (YouTube-beágyazás <em>vagy</em> feltöltött fájl), hangfájl lejátszóval, letölthető melléklet. A szerkesztőben mindegyik drag &amp; drop feltöltéssel megy.</p>
+
+<div class="demo-frame">
+  <h4 style="margin-top:0">🖼 Kép + galéria + videó + hang (mock)</h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+    <figure style="margin:0">
+      <div style="aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#2563eb);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem">🖼</div>
+      <figcaption style="font-size:.78rem;color:var(--muted);margin-top:.3rem">Kép-blokk: aláírás, alt, kattintásra lightbox</figcaption>
+    </figure>
+    <div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem">
+        <div style="aspect-ratio:1;border-radius:8px;background:#c7d2fe"></div>
+        <div style="aspect-ratio:1;border-radius:8px;background:#a5b4fc"></div>
+        <div style="aspect-ratio:1;border-radius:8px;background:#818cf8;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;font-weight:700">+4</div>
+      </div>
+      <p style="font-size:.78rem;color:var(--muted);margin:.3rem 0 0">Galéria-blokk: rács vagy lapozható carousel</p>
+    </div>
+    <div>
+      <div style="aspect-ratio:16/9;border-radius:10px;background:#0f172a;display:flex;align-items:center;justify-content:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;font-size:1.1rem">▶</div>
+      </div>
+      <p style="font-size:.78rem;color:var(--muted);margin:.3rem 0 0">Videó-blokk: YouTube/Vimeo-beágyazás vagy feltöltött mp4</p>
+    </div>
+    <div>
+      <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem .8rem;display:flex;align-items:center;gap:.6rem">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;flex:none">▶</div>
+        <div style="flex:1">
+          <div style="height:5px;border-radius:3px;background:#e2e8f0;position:relative"><div style="position:absolute;inset:0 65% 0 0;border-radius:3px;background:var(--accent)"></div></div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.25rem">1:24 / 3:50 · 1× sebesség</div>
+        </div>
+      </div>
+      <p style="font-size:.78rem;color:var(--muted);margin:.3rem 0 0">Hang-blokk: feltöltött mp3, sebességváltóval — az oldalszintű narráció mellett szakasz-szintű hanganyag is lehet</p>
+    </div>
+  </div>
+</div>
+
+<h3>2.5 Oldalszintű élmény</h3>
+<ul>
+  <li><strong>Rövid oldalak — ez tartalmi alapelv.</strong> Egy page egy jól körülhatárolt altéma, néhány percnyi olvasás (irányérték: legfeljebb ~10-15 blokk). Ezért <em>nincs</em> oldalon belüli mini-tartalomjegyzék: a navigáció egysége nem az oldalon belüli szakasz, hanem maga az oldal — a hangsúly a lapozón van.</li>
+  <li><strong>Kidolgozott lapozó</strong> az oldalak között (lásd a lenti mockot): lecke-szintű pontsor, nagy kattintható előző/következő kártyák, az „oldal elvégezve" a továbblépésbe integrálva.</li>
+  <li><strong>Scroll-reveal:</strong> a blokkok finom fade/slide animációval jelennek meg (IntersectionObserver, <code>prefers-reduced-motion</code> tisztelettel) — ahogy ezen az oldalon is.</li>
+  <li><strong>Tipográfia-frissítés:</strong> nagyobb sorköz, szellősebb címsorok, a callout-rendszerhez illő színakcentusok, dark mode.</li>
+</ul>
+
+<div class="demo-frame">
+  <h4 style="margin-top:0">⇄ Lapozó az oldal alján (mock)</h4>
+  <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:1rem">
+    <span style="width:10px;height:10px;border-radius:50%;background:var(--c-tetel)"></span>
+    <span style="width:10px;height:10px;border-radius:50%;background:var(--c-tetel)"></span>
+    <span style="width:22px;height:10px;border-radius:5px;background:var(--accent)"></span>
+    <span style="width:10px;height:10px;border-radius:50%;background:#cbd5e1"></span>
+    <span style="width:10px;height:10px;border-radius:50%;background:#cbd5e1"></span>
+    <span style="font-size:.75rem;color:var(--muted);margin-left:.5rem">3. / 5. oldal — ebben a leckében</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+    <a href="#" onclick="return false" style="display:block;border:1px solid var(--border);border-radius:10px;padding:.7rem 1rem;text-decoration:none;color:inherit">
+      <div style="font-size:.7rem;color:var(--muted)">← Előző oldal</div>
+      <div style="font-weight:600">Eseménytér és műveletek</div>
+    </a>
+    <a href="#" onclick="return false" style="display:block;border-radius:10px;padding:.7rem 1rem;text-decoration:none;background:var(--accent);color:#fff;text-align:right;box-shadow:0 8px 20px -10px rgba(37,99,235,.7)">
+      <div style="font-size:.7rem;opacity:.8">Elvégezve ✓ és tovább →</div>
+      <div style="font-weight:600">Szórás és variancia</div>
+    </a>
+  </div>
+  <p style="font-size:.8rem;color:var(--muted);margin:.75rem 0 0">A pontsor a lecke oldalait mutatja (zöld = elvégzett, kék = aktuális), a pontok kattinthatók. A „tovább" gomb egyben elvégzettnek is jelöli az oldalt; az utolsó oldalon a lecke-végi kérdéssorra visz. Billentyűzettel (←/→) és mobilon swipe-pal is lapozható, az oldalváltás finom slide-animációval történik.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="tarolas"><span class="num">3</span>Tárolás — a blokk-tábla</h2>
+
+<p class="lead">Új (újraélesztett) <code>content_blocks</code> tábla, soronként egy blokk. A <code>pages.markdown</code> oszlop megszűnik igazságforrásnak lenni, és egy átállási időszak után törölhető.</p>
+
+<pre><code><span class="cm">// migration: create_content_blocks_table</span>
+Schema::create(<span class="str">'content_blocks'</span>, function (Blueprint $table) {
+    $table->id();
+    $table->foreignId(<span class="str">'page_id'</span>)->constrained()->cascadeOnDelete();
+    $table->string(<span class="str">'type'</span>, 40);          <span class="cm">// 'text' | 'definicio' | 'chart' | ...</span>
+    $table->unsignedInteger(<span class="str">'order'</span>);
+    $table->json(<span class="str">'data'</span>);                 <span class="cm">// típus-specifikus payload</span>
+    $table->timestamps();
+
+    $table->index([<span class="str">'page_id'</span>, <span class="str">'order'</span>]);
+});</code></pre>
+
+<table>
+  <tr><th>Mező</th><th>Szerep</th></tr>
+  <tr><td><code>type</code></td><td>A blokktípus kulcsa — ezen keresztül oldódik fel a PHP osztály (registry, 4. fejezet) és a Vue komponens (6. fejezet). DB-szinten string, nem enum: új típus felvétele ne igényeljen migrációt.</td></tr>
+  <tr><td><code>order</code></td><td>Sorrend az oldalon belül, 0-tól. Átrendezésnél egy batch-update állítja.</td></tr>
+  <tr><td><code>data</code></td><td>A payload — sémáját és validálását kizárólag a típusosztály ismeri. A szöveges mezők (törzs, cím, kártya-oldalak, lépés-szövegek…) <strong>„rich text" mezők</strong>: Markdownt tárolnak egy rögzített inline-készlettel — <code>**félkövér**</code>, <code>*dőlt*</code>, <code>++aláhúzott++</code>, <code>~~áthúzott~~</code>, <code>==kiemelés==</code>, <code>[link](url)</code>, <code>`kód`</code>, <code>$képlet$</code> — plusz a hosszabb törzsmezőkben lista és bekezdés. Ezt a készletet a szerkesztő WYSIWYG-toolbarja és a megjelenítő ugyanabból a definícióból ismeri (ld. 6–7. fejezet).</td></tr>
+</table>
+
+<div class="note">
+  <strong>Alapelv: a tartalom szemantikát tárol, stílust soha.</strong> A blokk-payloadban kizárólag a blokk <em>típusa</em>, <em>adata</em> és legfeljebb <em>nevesített megjelenési módja</em> állhat (pl. callout <code>variant: "definicio"</code>, galéria <code>layout: "carousel"</code>, kép <code>size: "wide"</code>) — konkrét szín, betűméret, pixelérték, CSS soha. Hogy a „definíció" kék-e és milyen kék, azt kizárólag a projekt design-rétege (CSS design-tokenek / Tailwind téma) mondja meg. Így egy redesign — vagy akár témaváltás, dark mode — tisztán kódoldali változás: <strong>sem az adatbázishoz, sem a már exportált csomagokhoz nem kell hozzányúlni</strong>, és egy régi csomag importálva automatikusan az aktuális designban jelenik meg.
+</div>
+
+<h3>Kapcsolódó modellréteg</h3>
+<ul>
+  <li><code>ContentBlock</code> Eloquent-modell (<code>data</code> cast: <code>array</code>), <code>Page hasMany ContentBlock</code> (order szerint rendezve).</li>
+  <li>A <code>pages.body_html</code> <strong>marad</strong>, de már számított cache: a blokkok degradált renderjeinek összefűzése (típusosztályok <code>render()</code>-je, 4. fejezet). Blokk-mentéskor invalidálódik. Szerepe: keresési index, PPTX-export alap, „nyers" fallback nézet.</li>
+  <li>A számonkérés <strong>kizárólag a lecke-végi kérdéssor</strong> marad, a meglévő, változatlan modellel: <code>questions</code>/<code>answer_options</code>, a tanulói válaszok tárolásával (<code>question_responses</code>). Oldalba ágyazott kvíz-blokk <strong>nincs</strong> — így minden kitöltött válasz tárolt és kiértékelhető, nem vész el „önellenőrzésként".</li>
+  <li>Képek: változatlanul <code>course-media/&lt;course_id&gt;/</code> alatt; a blokk-payloadban storage-útvonal áll, az export/import a típusosztályon keresztül írja át (4. fejezet).</li>
+</ul>
+
+<h3>Meglévő adat migrálása</h3>
+<p>Egyszeri parancs: <code>php artisan pages:convert-to-blocks</code> — minden oldal <code>markdown</code>-ját a 9. fejezetbeli md→blokk konverterrel blokkokra bontja (a sima szövegfutamok <code>text</code> blokkok lesznek). A <code>markdown</code> oszlop az átállás alatt olvasható marad (vész-visszaút), majd egy későbbi migráció törli.</p>
+
+<!-- ============================================================ -->
+<h2 id="osztalyok"><span class="num">4</span>Blokktípus-osztályok (PHP)</h2>
+
+<p class="lead">Minden blokktípus egy osztály az <code>app/Blocks/</code> névtérben. Egy helyen él a típus <em>minden</em> szerveroldali logikája — validálás, degradált render, kereshető szöveg, média-átírás, md-konverzió. A rendszer többi része (importer, exporter, validate, PPTX, keresés) csak az absztrakt interfészt hívja, soha nem switch-el típusokon.</p>
+
+<pre><code><span class="cm">// app/Blocks/BlockType.php — az absztrakt ős</span>
+abstract class BlockType
+{
+    <span class="cm">/** A típus kulcsa — ez áll a content_blocks.type-ban és az export JSON-ban. */</span>
+    abstract public static function key(): string;              <span class="cm">// pl. 'chart'</span>
+
+    <span class="cm">/** Laravel validációs szabályok a data payloadra. */</span>
+    abstract public function rules(): array;
+
+    <span class="cm">/** Degradált, statikus HTML — body_html cache, keresés, fallback. */</span>
+    abstract public function render(array $data): string;
+
+    <span class="cm">/** Nyomtatási (PDF) HTML — alapértelmezésben a render(), de ahol az
+        interaktív tartalomnak nyomtatásban más kell (videó → link!),
+        a típus felülírja. */</span>
+    public function renderPrint(array $data, PrintContext $ctx): string { ... }
+
+    <span class="cm">/** Kereshető nyers szöveg (alapértelmezés: strip_tags(render())). */</span>
+    public function searchText(array $data): string { ... }
+
+    <span class="cm">/** Export: storage-képhivatkozások átírása csomagon belüli images/ útra. */</span>
+    public function exportData(array $data, MediaMap $media): array { return $data; }
+
+    <span class="cm">/** Import: images/ hivatkozások visszaírása storage-útra. */</span>
+    public function importData(array $data, MediaMap $media): array { return $data; }
+
+    <span class="cm">/** PPTX-degradáció (alapértelmezés: render() szövege szövegdobozként). */</span>
+    public function toPptx(array $data, SlideBuilder $slide): void { ... }
+
+    <span class="cm">// Egy blokk tehát NÉGY megjelenítési célt ismer: web (Vue komponens),
+    // html (cache/keresés), print (PDF) és pptx — a web a kliensen él,
+    // a másik három itt, a típusosztályban. Új blokk csak úgy vehető fel,
+    // ha mindegyikre értelmes kimenetet ad (vagy jó neki az alapértelmezés).</span>
+
+    <span class="cm">/** Emberi név + ikon-kulcs + blokkcsalád a szerkesztő palettájához
+        (a paletta színei is a frontend design-tokenekből jönnek). */</span>
+    abstract public function meta(): BlockMeta;
+}</code></pre>
+
+<pre><code><span class="cm">// Példa: app/Blocks/ChartBlock.php</span>
+class ChartBlock extends BlockType
+{
+    public static function key(): string { return <span class="str">'chart'</span>; }
+
+    public function rules(): array
+    {
+        return [
+            <span class="str">'variant'</span> => <span class="str">'required|in:bar,line,pie,scatter'</span>,
+            <span class="str">'title'</span>   => <span class="str">'nullable|string|max:200'</span>,
+            <span class="str">'labels'</span>  => <span class="str">'required|array|min:1'</span>,
+            <span class="str">'series'</span>  => <span class="str">'required|array|min:1'</span>,
+            <span class="str">'series.*.name'</span> => <span class="str">'required|string'</span>,
+            <span class="str">'series.*.data'</span> => <span class="str">'required|array|same_size_as:labels'</span>, <span class="cm">// saját rule</span>
+        ];
+    }
+
+    public function render(array $data): string
+    {
+        <span class="cm">// Degradált render: cím + adattáblázat (a kliens cseréli animált SVG-re).</span>
+    }
+}</code></pre>
+
+<h3>Registry és feloldás</h3>
+<ul>
+  <li><code>BlockRegistry</code> singleton: <code>key → osztálypéldány</code> map; a típusosztályok a service providerben (vagy attribútum-alapú auto-discoveryvel az <code>app/Blocks</code> mappából) regisztrálódnak.</li>
+  <li><code>$registry->resolve($block->type)</code> — ismeretlen típusra <code>UnknownBlock</code> null-objektumot ad vissza (szürke doboz renderrel, mindent-átengedő validálással): egy újabb verzióból származó export régebbi rendszeren sem törik el, csak degradálódik.</li>
+  <li>A callout <strong>egy</strong> blokktípus (<code>CalloutBlock</code>), a konkrét doboz-fajta a payload <code>variant</code> mezője — ez egy <em>szemantikus kulcs</em> (pl. <code>definicio</code>), nem stílus. A <code>config/blocks.php</code> csak az érvényes variánsok <em>jegyzékét</em> tartja (kulcs, címke, ikon-név) a validáláshoz és a szerkesztő-palettához; a tényleges megjelenés (szín, keret, tipográfia) a frontend design-rétegében él (CSS design-tokenek + variáns→stílus map a Callout komponensben). Új dobozfajta = egy config-bejegyzés + egy token-sor; redesign = csak a tokenek cserélődnek, az adat nem.</li>
+  <li>A fájlt hordozó média-blokkok (<code>image</code>, <code>gallery</code>, <code>video</code>, <code>audio</code>, <code>file</code>, <code>hotspot</code>) közös <code>HandlesMediaPaths</code> trait-et használnak: a payloadban deklarálják, mely mezők tartalmaznak storage-útvonalat, és az <code>exportData()</code>/<code>importData()</code> átírást a trait végzi egységesen.</li>
+</ul>
+
+<div class="note"><strong>Miért éri meg az osztály-per-típus:</strong> az importer, az exporter, a <code>course:validate</code>, a keresés és a PPTX-export mind ugyanazon az interfészen dolgozik — új blokktípus felvételekor <em>egyiket sem</em> kell módosítani. A régi <code>content_blocks</code>-világ fő fájdalma (típus-switch-ek szétszórva) ezzel szűnik meg.</div>
+
+<!-- ============================================================ -->
+<h2 id="katalogus"><span class="num">5</span>Blokk-katalógus</h2>
+
+<p>A katalógus induló készlet — a registry-architektúra miatt bármikor bővíthető. Négy család: szöveg/struktúra, média, callout, interaktív widget.</p>
+
+<h3>5.1 Szöveg- és struktúra-blokkok</h3>
+<table>
+  <tr><th>Típus (<code>key</code>)</th><th>Payload (vázlat)</th><th>Megjegyzés</th></tr>
+  <tr><td><code>text</code></td><td><code>{ markdown }</code></td><td>Folyó szöveg — teljes inline-formázással (félkövér, dőlt, aláhúzott, áthúzott, kiemelés, link, kód, <code>$képlet$</code>) + lista, bekezdés. A tananyag gerince.</td></tr>
+  <tr><td><code>heading</code></td><td><code>{ level, text }</code></td><td>Szakaszcím rövid oldalon belüli tagoláshoz (ritkán kell — ha sok van belőle egy oldalon, az oldal valószínűleg túl hosszú).</td></tr>
+  <tr><td><code>quote</code></td><td><code>{ body, source? }</code></td><td>Idézet forrásmegjelöléssel.</td></tr>
+  <tr><td><code>table</code></td><td><code>{ header[], rows[][] }</code></td><td>Adattáblázat — strukturáltan tárolva (mobilon kártyákká törhet).</td></tr>
+  <tr><td><code>code</code></td><td><code>{ language, source }</code></td><td>Kódrészlet syntax highlighttal (Shiki, lazy), másolás gombbal.</td></tr>
+  <tr><td><code>formula</code></td><td><code>{ latex, caption? }</code></td><td>Kiemelt képlet (KaTeX display mód) — a <code>keplet</code> callout „csupasz" párja.</td></tr>
+  <tr><td><code>columns</code></td><td><code>{ columns: [[blokk…], [blokk…]] }</code></td><td>Két/három hasábos elrendezés, beágyazott blokkokkal (pl. kép + magyarázat egymás mellett); mobilon egymás alá esik.</td></tr>
+  <tr><td><code>accordion</code></td><td><code>{ items: [{title, body}] }</code></td><td>Lenyíló szakaszok — megoldások elrejtése, GYIK. (A korábbi <code>lenyilo</code> általánosítása.)</td></tr>
+  <tr><td><code>tabs</code></td><td><code>{ tabs: [{title, body}] }</code></td><td>Fülek — pl. ugyanaz a példa Pythonban/R-ben/Excelben.</td></tr>
+  <tr><td><code>divider</code></td><td><code>{ variant?: 'line'|'space' }</code></td><td>Vizuális elválasztó / térköz — nevesített mód, a kinézete a témából jön.</td></tr>
+</table>
+
+<h3>5.2 Média-blokkok</h3>
+<p>Mindegyik a közös <code>HandlesMediaPaths</code> trait-tel (4. fejezet) kezeli a fájlokat; a szerkesztőben drag &amp; drop feltöltés és kurzus-szintű médiatárból választás (7. fejezet).</p>
+<table>
+  <tr><th>Típus</th><th>Payload (vázlat)</th><th>Megjegyzés</th></tr>
+  <tr><td><code>image</code></td><td><code>{ path, alt, caption?, size?: 'normal'|'wide'|'small' }</code></td><td>Kép aláírással (<code>figure</code>), nevesített méret-móddal (nem pixelértékkel), kattintásra lightbox.</td></tr>
+  <tr><td><code>gallery</code></td><td><code>{ items: [{path, alt, caption?}], layout: 'grid'|'carousel' }</code></td><td>Több kép rácsban vagy lapozható carouselben, lightboxszal.</td></tr>
+  <tr><td><code>video</code></td><td><code>{ source: 'youtube'|'vimeo'|'file', video_id?, path?, title?, poster? }</code></td><td>Beágyazott (ID-t tárol, nem nyers iframe-et — biztonságosabb) <em>vagy</em> feltöltött mp4 natív lejátszóval.</td></tr>
+  <tr><td><code>audio</code></td><td><code>{ path, title?, transcript? }</code></td><td>Hangfájl lejátszóval (sebességváltó); opcionális átirat lenyílóban. Az oldalszintű narráció (<code>.mp3</code>) marad, ez szakasz-szintű hanganyag.</td></tr>
+  <tr><td><code>file</code></td><td><code>{ path, label, size? }</code></td><td>Letölthető melléklet (PDF, munkafüzet, adat-CSV…).</td></tr>
+</table>
+
+<h3>5.3 Callout-blokk (egy típus, bővíthető variánsokkal)</h3>
+<p>Payload: <code>{ variant, title?, title_en?, body }</code>. A variáns szemantikus kulcs — a tartalom csak azt mondja meg, <em>mi</em> ez a doboz, azt nem, hogy <em>hogyan néz ki</em>. A táblázat „szín" oszlopa ezért csak a projekt-téma induló alapértelmezése (CSS-token), nem tárolt adat; a készlet configból bővíthető:</p>
+<table>
+  <tr><th>Variáns</th><th>Téma-alapértelmezés</th><th>Jelentés</th></tr>
+  <tr><td><code>definicio</code></td><td>kék</td><td>Definíció, fogalom bevezetése</td></tr>
+  <tr><td><code>tetel</code></td><td>zöld</td><td>Tétel / állítás / szabály</td></tr>
+  <tr><td><code>keplet</code></td><td>sárga</td><td>Kulcsképlet</td></tr>
+  <tr><td><code>pelda</code></td><td>narancs</td><td>Kidolgozott példa, mintafeladat</td></tr>
+  <tr><td><code>szemleletesen</code></td><td>türkiz</td><td>Szemléletes magyarázat, analógia</td></tr>
+  <tr><td><code>vigyazz</code></td><td>piros</td><td>Tipikus hiba, csapda, figyelmeztetés</td></tr>
+  <tr><td><code>roviden</code></td><td>szürke</td><td>Tömör összefoglaló</td></tr>
+  <tr><td><code>kiegeszites</code></td><td>lila</td><td>Tananyagon túli kitekintés</td></tr>
+  <tr><td><code>tipp</code></td><td>zöldeskék</td><td>Gyakorlati tanács, jótanács</td></tr>
+  <tr><td><code>cel</code></td><td>indigó</td><td>Tanulási cél a lecke/oldal elején („Miről szól?")</td></tr>
+</table>
+
+<h3>5.4 Interaktív widget-blokkok</h3>
+<table>
+  <tr><th>Típus</th><th>Payload (vázlat)</th><th>Animáció / interakció</th></tr>
+  <tr><td><code>chart</code></td><td><code>{ variant, title, labels, series[] }</code></td><td>Belépéskor felnövő oszlopok, hover-tooltip</td></tr>
+  <tr><td><code>flashcards</code></td><td><code>{ cards: [{front, back}] }</code></td><td>3D flip kattintásra</td></tr>
+  <tr><td><code>steps</code></td><td><code>{ steps: [{title, body}] }</code></td><td>Előre-hátra lapozás, pontsor</td></tr>
+  <tr><td><code>timeline</code></td><td><code>{ events: [{label, title, body}] }</code></td><td>Görgetésre épülő megjelenés</td></tr>
+  <tr><td><code>compare</code></td><td><code>{ left, right, rows: [{left, right}] }</code></td><td>Két fogalom egymás mellett, kiemeléssel</td></tr>
+  <tr><td><code>hotspot</code></td><td><code>{ image, spots: [{x, y, title, body}] }</code></td><td>Kattintható pontok a képen → felugró magyarázat</td></tr>
+  <tr><td><code>before-after</code></td><td><code>{ before: {path}, after: {path} }</code></td><td>Két kép csúszkával összehasonlítva (előtte/utána, nyers adat/illesztett modell)</td></tr>
+  <tr><td><code>mermaid</code></td><td><code>{ source }</code></td><td>Folyamatábra/gráf (mermaid.js, lazy-load)</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="render"><span class="num">6</span>Megjelenítő pipeline</h2>
+
+<div class="arch">
+  <span class="node dim">content_blocks sorok</span>
+  <span class="arr">→</span>
+  <span class="node">PageController (JSON props)</span>
+  <span class="arr">→</span>
+  <span class="node">BlockRenderer.vue</span>
+  <span class="arr">→</span>
+  <span class="node dim">típusonkénti Vue komponens</span>
+</div>
+
+<ol>
+  <li>A <code>PageController</code> a blokkokat adja át propként: <code>[{ id, type, data }]</code> — nincs HTML-összefűzés, nincs <code>v-html</code> az új úton.</li>
+  <li>A <code>BlockRenderer.vue</code> végigmegy a listán, és a kliensoldali komponens-registryből (<code>type → defineAsyncComponent</code>) oldja fel a megjelenítőt. A nehéz komponensek (mermaid, chart) lazy-loadolódnak — csak akkor töltődnek, ha az oldalon van ilyen blokk.</li>
+  <li>A szöveges payload-mezők (text blokk törzse, callout body, kártya-oldalak, lépés-szövegek…) egy közös <code>RichText.vue</code> komponensen mennek át: markdown-it + pluginek az inline-készlethez — <code>markdown-it-ins</code> (<code>++aláhúzott++</code>), <code>markdown-it-mark</code> (<code>==kiemelés==</code>), strikethrough, KaTeX. <code>html: false</code> — nyers HTML-t a payload <em>nem</em> tartalmazhat (kép/videó dedikált blokk), ezzel az XSS-felület a markdown-it kimenetére szűkül. Linkek: külső URL <code>target="_blank" rel="noopener"</code>-rel nyílik, a linkelhető sémák allowlistesek (http/https/mailto); belső, kurzuson belüli hivatkozás (másik oldalra) relatív útvonallal támogatott.</li>
+  <li>Ismeretlen <code>type</code> → <code>UnknownBlock.vue</code> (szürke doboz a degradált renderrel).</li>
+  <li>Scroll-reveal: a BlockRenderer minden blokkot egy közös reveal-wrapperbe csomagol (IntersectionObserver, <code>prefers-reduced-motion</code> tisztelettel).</li>
+</ol>
+
+<p><strong>Régi oldalak</strong> (amiknek még nincs blokkja, pl. HTML-importból): a controller a <code>body_html</code>-t adja, a nézet a mai <code>v-html</code>-es úton mutatja — a két út a konverziós parancs lefuttatása után összecsukható.</p>
+
+<!-- ============================================================ -->
+<h2 id="szerkeszto"><span class="num">7</span>Szerkesztő felület</h2>
+
+<p class="lead">A meglévő admin Editor bal oldali lecke/oldal-fája (drag &amp; drop) marad — a jobb oldal <strong>adatbázis-közeli blokk-szerkesztő</strong> lesz élő előnézettel. Mivel a blokk az igazságforrás, a szerkesztő állapota 1:1 a tárolt adat: nincs parsolás, nincs „mentéskor fordítás".</p>
+
+<div class="mock">
+  <div class="titlebar">
+    <span class="dot" style="background:#f87171"></span>
+    <span class="dot" style="background:#fbbf24"></span>
+    <span class="dot" style="background:#34d399"></span>
+    &nbsp;admin/courses/12/editor — Valószínűségszámítás
+  </div>
+  <div class="toolbar">
+    <span class="btn on">Szerkesztő</span>
+    <span class="btn">JSON-forrás</span>
+    <span class="sp"></span>
+    <span style="color:#059669;font-size:.72rem">✓ Minden mentve</span>
+  </div>
+  <div class="cols">
+    <div class="tree">
+      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Kurzus szerkezete</div>
+      <div class="lesson">▾ 1. Valószínűség alapjai</div>
+      <div class="pg">Eseménytér, műveletek</div>
+      <div class="pg sel">Várható érték</div>
+      <div class="pg">Szórás és variancia</div>
+      <div class="lesson">▸ 2. Eloszlások</div>
+      <div class="lesson">▸ 3. Becslés</div>
+      <div style="margin-top:.75rem;color:var(--accent);font-weight:600">+ Új oldal</div>
+    </div>
+    <div class="blocks">
+      <h5>Blokkok — húzással rendezhető, egyenként mentődik</h5>
+      <div class="block">
+        <span class="tag" style="background:#64748b">SZÖVEG</span> <span class="saved">✓</span> <span class="grip">⠿</span>
+        <div style="margin-top:.3rem;color:#475569">Miről szól? Ebben a részben a várható érték fogalmát…</div>
+      </div>
+      <div class="block sel">
+        <span class="tag" style="background:var(--c-def)">DEFINÍCIÓ</span> <span class="grip">⠿</span>
+        <div style="margin-top:.3rem">
+          <div style="display:flex;gap:.4rem;margin:.2rem 0">
+            <span style="border:1px solid var(--border);border-radius:5px;padding:.1rem .4rem;flex:1">Cím: Várható érték</span>
+            <span style="border:1px solid var(--border);border-radius:5px;padding:.1rem .4rem">EN: expected value</span>
+          </div>
+          <div style="position:relative;border:1px solid var(--border);border-radius:5px;padding:.25rem .4rem;color:#475569">
+            <div style="position:absolute;top:-1.5rem;left:1.2rem;background:#1e293b;color:#e2e8f0;border-radius:6px;padding:.1rem .45rem;font-size:.68rem;display:flex;gap:.45rem;box-shadow:0 4px 10px -4px rgba(15,23,42,.5)"><b>B</b><i>I</i><u>U</u><s>S</s><span style="background:#fef08a;color:#92400e;padding:0 .2rem;border-radius:2px">M</span>🔗<span>ƒ</span></div>
+            A <strong style="background:#dbeafe">várható érték</strong> a … súlyozott átlaga. Jele: <i>M(ξ)</i>.
+          </div>
+        </div>
+      </div>
+      <div class="block">
+        <span class="tag" style="background:var(--c-keplet)">KULCSKÉPLET</span> <span class="saved">✓</span> <span class="grip">⠿</span>
+        <div style="margin-top:.3rem;color:#475569">$$M(\xi) = \sum x_i p_i$$</div>
+      </div>
+      <div class="block">
+        <span class="tag" style="background:#0ea5e9">CHART</span> <span class="saved">✓</span> <span class="grip">⠿</span>
+        <div style="margin-top:.3rem;color:#475569">bar · „Kockadobás gyakoriságai" · 6 oszlop <span style="float:right;color:var(--accent)">Adatok szerkesztése ▸</span></div>
+      </div>
+      <div class="addline">+ Blokk hozzáadása ( / )</div>
+      <div class="palette">
+        <div style="font-size:.65rem;color:var(--muted);padding:.2rem .5rem">BLOKK BESZÚRÁSA — gépelj a szűréshez…</div>
+        <div class="it"><span class="sw" style="background:#64748b"></span> Szöveg</div>
+        <div class="it"><span class="sw" style="background:var(--c-def)"></span> Definíció</div>
+        <div class="it"><span class="sw" style="background:var(--c-tetel)"></span> Tétel</div>
+        <div class="it"><span class="sw" style="background:var(--c-pelda)"></span> Példa + lenyíló megoldás</div>
+        <div class="it"><span class="sw" style="background:#0ea5e9"></span> Diagram</div>
+        <div class="it"><span class="sw" style="background:#a855f7"></span> Fogalomkártyák</div>
+      </div>
+    </div>
+    <div class="preview">
+      <h5>Élő előnézet (= tanulói nézet)</h5>
+      <p style="font-size:.75rem;color:#475569;margin:.3rem 0">Miről szól? Ebben a részben a várható érték fogalmát vezetjük be…</p>
+      <div class="callout def">
+        <span class="head">📘 DEFINÍCIÓ · Várható érték</span>
+        <div class="body">A <strong>várható érték</strong> a … súlyozott átlaga. Jele: <i>M(ξ)</i>.</div>
+      </div>
+      <div class="callout keplet">
+        <span class="head">🔑 KULCSKÉPLET</span>
+        <div class="body formula" style="font-size:.85rem">M(ξ) = Σ x<sub>i</sub> p<sub>i</sub></div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;height:70px;display:flex;align-items:flex-end;gap:.4rem;padding:.4rem .6rem">
+        <div style="flex:1;height:40%;background:#60a5fa;border-radius:3px 3px 0 0"></div>
+        <div style="flex:1;height:60%;background:#60a5fa;border-radius:3px 3px 0 0"></div>
+        <div style="flex:1;height:50%;background:#60a5fa;border-radius:3px 3px 0 0"></div>
+        <div style="flex:1;height:65%;background:#60a5fa;border-radius:3px 3px 0 0"></div>
+        <div style="flex:1;height:55%;background:#60a5fa;border-radius:3px 3px 0 0"></div>
+        <div style="flex:1;height:58%;background:#60a5fa;border-radius:3px 3px 0 0"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Működés</h3>
+<ul>
+  <li><strong>Blokk-CRUD REST-en:</strong> <code>POST/PATCH/DELETE /admin/pages/{page}/blocks/{block}</code> + <code>PUT …/blocks/order</code> (átrendezés). A PATCH a típusosztály <code>rules()</code>-ával validál — a hibás payload <em>be sem kerül</em> az adatbázisba, a hibaüzenet mezőre pontosan jelenik meg az űrlapon.</li>
+  <li><strong>Blokkonkénti autosave</strong> (debounce + „✓ mentve" jelzés) — nincs nagy „Mentés" gomb-szorongás, és két admin párhuzamosan szerkeszthet különböző blokkokat.</li>
+  <li><strong>Típusonkénti szerkesztő-űrlap:</strong> a kliensoldali registry minden típushoz egy <em>viewer</em> és egy <em>editor</em> komponenst ad. Callout: variáns + cím + EN + rich text törzs; chart: adatrács + típusválasztó; flashcards: kártyapár-lista. (A lecke-végi kérdéssort továbbra is a meglévő kérdés-szerkesztő kezeli, nem a blokk-szerkesztő.)</li>
+  <li><strong>Szövegformázás — WYSIWYG, nem nyers Markdown:</strong> minden szöveges mező egy közös <code>RichTextEditor.vue</code> komponens (tiptap/ProseMirror alapon, Markdown ki-/beszerializálással). Kijelölésre <strong>buborék-toolbar</strong> ugrik fel: <strong>B</strong> félkövér, <em>I</em> dőlt, <u>U</u> aláhúzott, <s>áthúzott</s>, <mark style="background:#fef08a;padding:0 .15em">kiemelés</mark>, 🔗 link (URL-mezővel, belső oldal-választóval), <code>kód</code>, ƒ képlet; a hosszabb törzsmezőkben lista és bekezdés is. A szerző formázott szöveget lát és szerkeszt — Markdownt csak a JSON-forrás fülön vagy az exportban találkozik vele. A toolbar készlete mezőnként szűkíthető (egy kártya-hátoldalon nincs lista), és pontosan a 3. fejezetben rögzített inline-készletet fedi — amit a toolbar nem tud, azt a formátum sem engedi be.</li>
+  <li><strong><code>/</code> paletta</strong> beszúráshoz (a típusosztályok <code>meta()</code>-jából épül: név, ikon, szín, családonként csoportosítva), drag &amp; drop sorrendezés a meglévő oldal-D&D mintájára, duplikálás, törlés.</li>
+  <li><strong>Médiafeltöltés és médiatár:</strong> kép/videó/hang/fájl húzható közvetlenül a blokkra vagy az oldalra (utóbbi automatikusan a megfelelő média-blokkot hozza létre a fájltípus alapján). Feltöltési végpont: <code>POST /admin/courses/{course}/media</code> → <code>course-media/&lt;course_id&gt;/</code>. A média-blokkok szerkesztője a kurzus <strong>médiatárából</strong> is választhat (már feltöltött fájlok rácsnézete, kereséssel) — egy ábra több oldalon újrahasználható duplikálás nélkül.</li>
+  <li><strong>„JSON-forrás" fül:</strong> az oldal blokklistája nyers (export-formátumú) JSON-ként — agent-kimenet beillesztéséhez / hibakereséshez; mentéskor típusonkénti validálás fut rá.</li>
+  <li><strong>Markdown-beillesztés megmarad kényelmi funkcióként:</strong> a leckére dobott <code>.md</code> fájl (meglévő dropzone) az md→blokk konverteren át blokkokként landol.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="export"><span class="num">8</span>Export: zip-csomag (JSON) és kiadványok (PDF/PPTX)</h2>
+
+<p>A zip-struktúra ismerős marad, de az oldalfájlok <code>.json</code>-ok, és a <code>format_version</code> 2-re lép:</p>
+
+<div class="card filetree">
+valoszinusegszamitas/<br>
+├── course.json <span class="dim">· format_version: <span class="new">2</span> — kurzus/lecke/oldal/kérdés metaadat, változatlan séma, a `file` mezők .json-ra mutatnak</span><br>
+├── thumbnail.png<br>
+├── media/<br>
+│&nbsp;&nbsp; └── *.png / *.jpg / *.mp4 / *.mp3 / *.pdf <span class="new">← minden blokk-hivatkozott fájl (kép, videó, hang, melléklet)</span><br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="dim">· az átírást a HandlesMediaPaths trait végzi; v1 csomagok images/ mappáját az import továbbra is érti</span><br>
+└── pages/&lt;lecke-slug&gt;/&lt;oldal-slug&gt;<span class="new">.json</span> &nbsp;<span class="new">← az oldal blokklistája</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; + .txt / .mp3 <span class="dim">· narráció, változatlan</span>
+</div>
+
+<p>Egy oldalfájl tartalma:</p>
+
+<pre><code>{
+  <span class="kw">"blocks"</span>: [
+    { <span class="kw">"type"</span>: <span class="str">"text"</span>,
+      <span class="kw">"data"</span>: { <span class="kw">"markdown"</span>: <span class="str">"Ebben a részben a **várható érték** fogalmát vezetjük be…"</span> } },
+
+    { <span class="kw">"type"</span>: <span class="str">"definicio"</span>,
+      <span class="kw">"data"</span>: { <span class="kw">"title"</span>: <span class="str">"Várható érték"</span>, <span class="kw">"title_en"</span>: <span class="str">"expected value"</span>,
+                <span class="kw">"body"</span>: <span class="str">"A valószínűségi változó értékeinek súlyozott átlaga. Jele: $M(\\xi)$."</span> } },
+
+    { <span class="kw">"type"</span>: <span class="str">"image"</span>,
+      <span class="kw">"data"</span>: { <span class="kw">"path"</span>: <span class="str">"media/eloszlas.png"</span>, <span class="kw">"alt"</span>: <span class="str">"Eloszlás"</span>, <span class="kw">"caption"</span>: <span class="str">"Forrás: saját ábra"</span> } },
+
+    { <span class="kw">"type"</span>: <span class="str">"audio"</span>,
+      <span class="kw">"data"</span>: { <span class="kw">"path"</span>: <span class="str">"media/varhato-ertek-magyarazat.mp3"</span>, <span class="kw">"title"</span>: <span class="str">"Hangos magyarázat"</span> } },
+
+    { <span class="kw">"type"</span>: <span class="str">"chart"</span>,
+      <span class="kw">"data"</span>: { <span class="kw">"variant"</span>: <span class="str">"bar"</span>, <span class="kw">"title"</span>: <span class="str">"Kockadobás gyakoriságai"</span>,
+                <span class="kw">"labels"</span>: [1,2,3,4,5,6],
+                <span class="kw">"series"</span>: [{ <span class="kw">"name"</span>: <span class="str">"Gyakoriság"</span>, <span class="kw">"data"</span>: [18,21,19,22,20,20] }] } }
+  ]
+}</code></pre>
+
+<p>Elvek:</p>
+<ul>
+  <li><strong>Veszteségmentes kör:</strong> import → export bájtra azonos csomagot ad (a meglévő exporter-elv marad). A blokk <code>id</code> nem kerül exportba — a csomag példány-független.</li>
+  <li><strong>Stílusfüggetlen:</strong> a csomag semmilyen színt/CSS-t nem tartalmaz, csak típusokat, adatot és nevesített megjelenési módokat (3. fejezet alapelve). Ugyanaz a csomag egy redesign után — vagy egy másként témázott példányba importálva — automatikusan az ottani designban jelenik meg.</li>
+  <li><strong>Diffelhető:</strong> pretty-printed, stabil kulcssorrend (<code>type</code> előre), blokkonkénti objektum — git-diffben egy blokk-módosítás egy tömör hunk.</li>
+  <li><strong>Önhordó:</strong> minden hivatkozott fájl (kép, videó, hang, melléklet) a zip <code>media/</code> mappájában; az útvonal-átírást a média-blokkok közös <code>HandlesMediaPaths</code> trait-je végzi az <code>exportData()</code>/<code>importData()</code>-n keresztül. Beágyazott (YouTube/Vimeo) videónál természetesen csak az ID utazik.</li>
+  <li>A <code>course.json</code> felső szintje (cím, slug, leckék, oldalak, <em>értékelt</em> kvízkérdések, thumbnail, narráció-fájlok) <strong>változatlan séma</strong> — a resync-viselkedés (slug-azonosítás, teljes frissítés) is marad.</li>
+</ul>
+
+<h3>Kiadványok: PDF és PPTX</h3>
+
+<p>A zip-csomag mellett a kurzus <strong>kiadványként</strong> is exportálható — ezekben a formátumokban a blokkoknak más megjelenítés kell, mert nincs interakció. Ezt nem az exporter találgatja, hanem maga a blokktípus tudja (4. fejezet): a PDF a blokkonkénti <code>renderPrint()</code>-ből, a PPTX a <code>toPptx()</code>-ből épül. A szabály szerződés-szintű: <strong>minden blokknak kötelező értelmes statikus megfelelőt adnia</strong> — új blokktípus enélkül nem vehető fel.</p>
+
+<ul>
+  <li><strong>PDF-pipeline:</strong> blokkonkénti <code>renderPrint()</code> → nyomtatási HTML (a téma print-stíluslapjával: callout-dobozok színesen, animációk nélkül) → headless Chrome (spatie/browsershot) → PDF. Mivel böngésző renderel, a KaTeX-képletek és a chart statikus SVG-je ugyanúgy néznek ki, mint a weben. A linkek kattinthatók, de a cél-URL <em>szövegesen is kiírva</em> szerepel — kinyomtatva is használható.</li>
+  <li><strong>PPTX-pipeline:</strong> a meglévő <code>CoursePptxExporter</code> marad, de a diákat blokkonként a <code>toPptx()</code> építi (a mostani markdown-alapú diabontás helyett) — a blokkhatárok természetes diahatárok.</li>
+</ul>
+
+<table>
+  <tr><th>Blokk</th><th>Web (interaktív)</th><th>PDF (print)</th><th>PPTX</th></tr>
+  <tr><td><code>video</code></td><td>Beágyazott lejátszó</td><td><strong>Poszterkép + link</strong> („▶ Videó megtekintése: youtube.com/…" — az URL kiírva)</td><td>Poszterkép a dián, kattintható linkkel</td></tr>
+  <tr><td><code>audio</code></td><td>Lejátszó sebességváltóval</td><td>Link kiírt URL-lel + az átirat szövege (ha van)</td><td>Link + átirat a dia jegyzetében</td></tr>
+  <tr><td><code>file</code></td><td>Letöltés gomb</td><td>Link kiírt URL-lel</td><td>Link a dián</td></tr>
+  <tr><td><code>gallery</code></td><td>Carousel/rács, lightbox</td><td>Képrács aláírásokkal</td><td>Képek a dián (sok képnél több dia)</td></tr>
+  <tr><td><code>chart</code></td><td>Animált SVG, tooltip</td><td>Statikus SVG (szerveroldalon ugyanabból az adatból)</td><td>Chart-kép a dián</td></tr>
+  <tr><td><code>flashcards</code></td><td>Flip-kártyák</td><td>Fogalom–meghatározás táblázat</td><td>Táblázat vagy felsorolás</td></tr>
+  <tr><td><code>steps</code></td><td>Léptethető, pontsorral</td><td>Számozott lista (minden lépés kibontva)</td><td>Diánként egy lépés</td></tr>
+  <tr><td><code>accordion</code> / <code>tabs</code></td><td>Lenyíló / fülek</td><td>Minden szakasz kinyitva, cím + törzs egymás után</td><td>Szakaszonként kibontva</td></tr>
+  <tr><td><code>hotspot</code></td><td>Kattintható pontok</td><td>Kép számozott jelölőkkel + jelmagyarázat-lista</td><td>Ugyanez a dián</td></tr>
+  <tr><td><code>before-after</code></td><td>Csúszka</td><td>Két kép egymás mellett, „Előtte / Utána" felirattal</td><td>Ugyanez a dián</td></tr>
+  <tr><td><code>mermaid</code></td><td>Kliensoldali render</td><td>Kép (a headless Chrome rendereli, mint a weben)</td><td>Előrenderelt kép a dián</td></tr>
+  <tr><td>callout / <code>text</code> / <code>table</code> / <code>code</code></td><td>Teljes megjelenés</td><td>Ugyanaz, print-stílussal</td><td>Színes szövegdoboz / táblázat / kód</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="import"><span class="num">9</span>Import és md/html kompatibilitás</h2>
+
+<table>
+  <tr><th>Bemenet</th><th>Kezelés</th><th>Státusz</th></tr>
+  <tr>
+    <td>v2 zip (<code>.json</code> oldalak)</td>
+    <td>Natív út: blokklista beolvasása, típusonkénti <code>rules()</code> validálás, <code>importData()</code> médiavisszaírás, <code>content_blocks</code> sorok létrehozása.</td>
+    <td><span class="pill blue">ÚJ</span></td>
+  </tr>
+  <tr>
+    <td>v1 zip (<code>.md</code> oldalak)</td>
+    <td><strong>MarkdownToBlocks konverter:</strong> a meglévő <code>MarkdownSplitter</code> logikára építve az oldalt szakaszokra bontja — címsor → <code>heading</code>, <code>&lt;figure&gt;/![...]</code> → <code>image</code>, <code>&lt;iframe&gt;</code> → <code>video</code>, <code>&lt;audio&gt;</code> → <code>audio</code>, md-táblázat → <code>table</code>, kódblokk → <code>code</code>, idézet → <code>quote</code>, minden más futam → <code>text</code> blokk. (Ha a v1 csomag már tartalmaz direktívás/kiterjesztett md-t, a konverter a <code>:::</code> és widget-fence mintákat is felismeri.)</td>
+    <td><span class="pill green">KOMPATIBILIS</span></td>
+  </tr>
+  <tr>
+    <td><code>.html</code> oldalfájlok</td>
+    <td>Kétlépcsős: HTML→md konverzió a meglévő úton, majd MarkdownToBlocks. Ami nem képezhető le tisztán, az egy <code>legacy_html</code> blokkba kerül (sandboxolt render) — semmi nem vész el.</td>
+    <td><span class="pill green">KOMPATIBILIS</span></td>
+  </tr>
+  <tr>
+    <td>zip/<code>.md</code>-k <code>course.json</code> nélkül</td>
+    <td>„Mappa = lecke" konvenció változatlan, az oldalak a konverteren át blokkosodnak.</td>
+    <td><span class="pill green">KOMPATIBILIS</span></td>
+  </tr>
+  <tr>
+    <td>Önálló <code>course.json</code></td>
+    <td>Szerkezet-import változatlan (üres oldalak, blokkok nélkül).</td>
+    <td><span class="pill green">KOMPATIBILIS</span></td>
+  </tr>
+</table>
+
+<h3>Validálás</h3>
+<ul>
+  <li><code>php artisan course:validate</code> a v2 csomagokra blokkonként futtatja a típusosztályok <code>rules()</code>-át — ugyanaz a kód véd az importnál, a szerkesztő PATCH-énél és a validate-parancsnál. Ismeretlen blokktípus → figyelmeztetés (importnál <code>UnknownBlock</code>-ként bekerül, nem vész el).</li>
+  <li>Tartalmi figyelmeztetések: <strong>túl hosszú oldal</strong> (~15 blokk felett — a rövid oldal alapelv, a navigáció egysége az oldal), tisztán szöveges oldal (nincs se média, se callout, se widget), hiányzó médiafájl, chart label/data hossz-eltérés; a lecke-végi kérdéseknél (a <code>course.json</code>-ban) a meglévő szabály — pontosan egy helyes válasz — ellenőrzése marad.</li>
+  <li>Az import-terv (ImportPlanner / Import.vue) oldalanként mutatja a blokk-összetételt (pl. „4 text · 2 definíció · 1 chart · 1 galéria") és az md/html-konverzió tényét — import előtt látszik, mi fog történni.</li>
+</ul>
+
+<div class="note"><strong>A konverter az architektúra kritikus pontja</strong> — ez váltja ki a korábbi terv „ingyen kompatibilitását". Ezért: tiszta, önálló osztály (<code>app/Services/CourseTransfer/MarkdownToBlocks.php</code>), kimerítő egység-tesztekkel a meglévő kurzusok (<code>data/stat/…</code>) valós oldalain, és a 3. fejezetbeli <code>pages:convert-to-blocks</code> parancs is ezt használja — tehát az éles adatmigráció maga a legnagyobb integrációs teszt.</div>
+
+<!-- ============================================================ -->
+<h2 id="agent"><span class="num">10</span>Course-builder agent frissítése</h2>
+
+<p class="lead">A <code>.claude/agents/course-builder.md</code> átáll a v2 formátumra: az agent oldalanként <code>.json</code> blokkfájlokat ír. A folyó szöveget továbbra is Markdownban fogalmazza — csak <code>text</code>/callout-blokkok <code>markdown</code>/<code>body</code> mezőibe csomagolva.</p>
+
+<div class="card">
+  <h4 style="margin-top:0">Új/módosuló szakaszok az agent-leírásban</h4>
+  <ol>
+    <li><strong>Blokk-katalógus</strong> — az 5. fejezet táblázatai, minden típushoz egy teljes, valid JSON-példával (az agent másolható mintákból dolgozik a legjobban).</li>
+    <li><strong>Írási munkafolyamat:</strong> az agent oldalanként építi a <code>blocks</code> tömböt; <strong>egy oldal rövid</strong> — egy jól körülhatárolt altéma, legfeljebb ~10-15 blokk (a 3-6 oldal/lecke szabály marad); a magyarázó szöveg kevés, nagyobb <code>text</code> blokkba kerüljön (ne mondatonként darabolva), a fogalmak/tételek/példák viszont mindig a megfelelő callout-blokkba — tilos „félkövér szöveg mint definíció". A szöveges mezőkben a rögzített inline-készlet használható: <code>**félkövér**</code>, <code>*dőlt*</code>, <code>++aláhúzott++</code>, <code>==kiemelés==</code>, <code>[link](https://…)</code>, <code>`kód`</code>, <code>$képlet$</code> — nyers HTML tilos (a validate elutasítja). <strong>Stílust az agent soha nem ír</strong> — se színt, se méretet: csak blokktípust, variánst és nevesített módot választ (pl. <code>size: "wide"</code>), a kinézet a platform témájából jön.</li>
+    <li><strong>Kötelező minimumok:</strong> leckénként ≥2 interaktív widget-blokk (az anyaghoz illőt választva: számsorhoz <code>chart</code>, fogalomlistához <code>flashcards</code>, levezetéshez <code>steps</code>, folyamathoz <code>mermaid</code>); kidolgozott példák megoldása <code>accordion</code> blokkban elrejtve; minden képlet KaTeX-ben. A számonkérés változatlanul a lecke-végi kérdéssor: leckénként 2-4 kérdés a <code>course.json</code>-ban, pontosan egy helyes válasszal — kérdés-blokk az oldalakon nincs.</li>
+    <li><strong>Forrás → blokk leképezési útmutató:</strong> hogyan ismerje fel a PDF-ben a definíciót/tételt/példát (→ megfelelő callout-variáns); táblázatos adat → <code>chart</code> vagy <code>table</code>; fogalompárok → <code>flashcards</code>; kódpéldák → <code>code</code> (több nyelven → <code>tabs</code>); <code>*[Kép]*</code>/<code>*[Videó]*</code> placeholder → <code>image</code>/<code>video</code> blokk (a meglévő képbeszerzési szabályok — Wikimedia, saját Pillow-ábra, ellenőrzött videó-ID — változatlanok, csak a hivatkozás kerül blokk-payloadba); több összetartozó ábra → <code>gallery</code>. Ha van TTS-munkafolyamat, a szakasz-szintű hanganyag <code>audio</code> blokkba is kerülhet, nem csak oldal-narrációba.</li>
+    <li><strong>Validálás:</strong> a kötelező <code>php artisan course:validate</code> mostantól a blokkok sémáját is ellenőrzi; JSON-szintaktikai hibát is azonnal fog. Az agent a hibát blokkolónak tekinti.</li>
+    <li><strong>Ellenőrzőlista bővítése:</strong> „minden leckében ≥2 widget-blokk", „nincs callout nélküli oldal", „minden oldal valid a validate szerint".</li>
+  </ol>
+</div>
+
+<p>Jó pilóta-feladat: a ValStat-jegyzetből (<code>ValStat_tanulojegyzet.pdf</code>) készüljön el az első v2-es kurzus a frissített agenttel — a forrás már eleve a cél-dobozrendszerben íródott, tehát a leképezés egyértelmű, és azonnal méri, mennyire jó az útmutató és a JSON-séma agent-ergonómiája.</p>
+
+<!-- ============================================================ -->
+<h2 id="utemterv"><span class="num">11</span>Ütemterv és érintett fájlok</h2>
+
+<div class="phase"><span class="n">1</span><div class="t">
+  <strong>Mag: blokk-tábla + típusosztályok + konverter</strong>
+  <small><code>content_blocks</code> migráció, <code>ContentBlock</code> modell, <code>BlockType</code> ős + registry + alap- és callout-típusok; <code>MarkdownToBlocks</code> konverter tesztekkel; <code>pages:convert-to-blocks</code> parancs és a meglévő kurzusok átmigrálása.</small>
+</div></div>
+<div class="phase"><span class="n">2</span><div class="t">
+  <strong>Megjelenítő</strong>
+  <small><code>BlockRenderer.vue</code> + komponens-registry + callout-viewer + <code>RichText.vue</code> (markdown-it + KaTeX); <code>pages/Show.vue</code> átállítása; scroll-reveal, kidolgozott lapozó (pontsor + kártyák + „elvégezve és tovább" + billentyű/swipe), tipográfia. Média-viewerek (image + lightbox, gallery, video, audio, file), majd widgetek: chart, flashcards, steps, accordion — végül timeline, compare, hotspot, before-after, mermaid, columns/tabs.</small>
+</div></div>
+<div class="phase"><span class="n">3</span><div class="t">
+  <strong>Szerkesztő</strong>
+  <small>Blokk-CRUD controller (típusosztályos validálással), Editor.vue jobb panel: blokklista + típusonkénti editor-űrlapok + <code>RichTextEditor</code> (tiptap, buborék-toolbar: félkövér/dőlt/aláhúzott/kiemelés/link/kód/képlet) + <code>/</code> paletta + autosave + élő előnézet + JSON-forrás fül; médiafeltöltés (drag &amp; drop) és kurzus-médiatár.</small>
+</div></div>
+<div class="phase"><span class="n">4</span><div class="t">
+  <strong>Export/import/validate v2</strong>
+  <small>Exporter: oldalankénti <code>.json</code> + <code>format_version: 2</code>; Importer: v2 natív út + v1 md/html a konverteren át; <code>course:validate</code> blokk-séma ellenőrzés; ImportPlanner blokk-összetétel kijelzés; <code>body_html</code> cache újraépítése blokkokból; kiadvány-exporterek a blokk-interfészre: új <code>CoursePdfExporter</code> (<code>renderPrint</code> + headless Chrome) és a <code>CoursePptxExporter</code> átállítása blokkonkénti <code>toPptx()</code>-re.</small>
+</div></div>
+<div class="phase"><span class="n">5</span><div class="t">
+  <strong>Agent-frissítés + pilot kurzus</strong>
+  <small><code>course-builder.md</code> átírása a 10. fejezet szerint; a ValStat-jegyzet legyártása v2-ben; tapasztalatok visszavezetése az útmutatóba és a sémákba.</small>
+</div></div>
+<div class="phase optional"><span class="n">6</span><div class="t">
+  <strong>Később (opcionális)</strong>
+  <small><code>pages.markdown</code> oszlop törlése; kiadvány-sablonok finomítása (PDF-fejléc/lábléc, PPTX-témák); blokk-szintű verziózás/komment; „dia-mód" oldaltípus.</small>
+</div></div>
+
+<h3>Érintett fájlok</h3>
+<table>
+  <tr><th>Fájl / hely</th><th>Művelet</th></tr>
+  <tr><td><code>database/migrations/…create_content_blocks…</code> (új)</td><td>Blokk-tábla (3. fejezet)</td></tr>
+  <tr><td><code>app/Models/ContentBlock.php</code> (új), <code>Page.php</code></td><td>Modell + reláció; <code>body_html</code> cache blokkokból</td></tr>
+  <tr><td><code>app/Blocks/</code> (új)</td><td><code>BlockType</code> ős, <code>BlockRegistry</code>, <code>HandlesMediaPaths</code> trait, típusonkénti osztályok (CalloutBlock a config-variánsokkal), <code>UnknownBlock</code></td></tr>
+  <tr><td><code>config/blocks.php</code> (új)</td><td>Variáns- és mód-jegyzékek a validáláshoz/palettához (callout-variánsok kulcs+címke+ikon-név, kép-méret módok, engedélyezett videó-providerek) — stílust nem tartalmaz</td></tr>
+  <tr><td><code>resources/css/</code> + Callout/blokk komponensek</td><td>Design-tokenek (variáns-színek, dobozstílusok, dark mode) — a megjelenés egyetlen igazságforrása</td></tr>
+  <tr><td><code>app/Services/CourseTransfer/</code></td><td><code>MarkdownToBlocks.php</code> (új); Exporter/Importer v2; validate-parancs blokk-séma; ImportPlanner összetétel</td></tr>
+  <tr><td><code>app/Http/Controllers/</code></td><td><code>PageController</code>: blokkok propként; új <code>Admin\ContentBlockController</code> (CRUD + order) és <code>Admin\CourseMediaController</code> (feltöltés + médiatár-listázás)</td></tr>
+  <tr><td><code>app/Console/Commands/</code></td><td><code>pages:convert-to-blocks</code> (új)</td></tr>
+  <tr><td><code>resources/js/components/blocks/</code> (új)</td><td>BlockRenderer.vue, MarkdownText.vue, registry, típusonként viewer + editor komponens</td></tr>
+  <tr><td><code>resources/js/pages/courses/lessons/pages/Show.vue</code></td><td>BlockRenderer + kidolgozott lapozó (2.5 mock szerint; legacy <code>v-html</code> út fallbackként)</td></tr>
+  <tr><td><code>resources/js/pages/admin/courses/Editor.vue</code></td><td>Jobb panel → blokk-szerkesztő + előnézet + JSON-fül</td></tr>
+  <tr><td><code>app/Services/Publishing/</code></td><td><code>CoursePptxExporter</code>: blokkonkénti <code>toPptx()</code>-re átállás; új <code>CoursePdfExporter</code> (blokkonkénti <code>renderPrint()</code> + print-stíluslap + spatie/browsershot — composer-függőség)</td></tr>
+  <tr><td><code>.claude/agents/course-builder.md</code></td><td>v2 formátum: blokk-katalógus + minimumok + leképezési útmutató</td></tr>
+  <tr><td><code>package.json</code></td><td>+ markdown-it (+ ins/mark/strikethrough pluginek), katex (@mdit/plugin-katex), tiptap + tiptap-markdown (RichTextEditor), shiki (code blokk, lazy), mermaid (lazy)</td></tr>
+</table>
+
+<div class="note" style="margin-top:2.5rem">
+  <strong>Összefoglalva egy mondatban:</strong> az oldal típusos blokkok rendezett listája egy saját <code>content_blocks</code> táblában; minden blokktípus logikáját egyetlen PHP osztály írja le (validálás, render, export/import, PPTX), amit egy registry old fel; a cserecsomag oldalanként diffelhető JSON-t tartalmaz, a régi <code>.md</code>/<code>.html</code> csomagokat pedig egy jól tesztelt konverter emeli be ugyanebbe a blokkvilágba — ugyanez a konverter migrálja át a meglévő adatbázist is.
+</div>
+
+</div>
+
+<script>
+  // Scroll-reveal demo
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal-on-scroll').forEach(el => io.observe(el));
+
+  // Stepper demo
+  let stepIdx = 0;
+  function stepperMove(d) {
+    const steps = document.querySelectorAll('#demo-stepper .step');
+    const dots = document.querySelectorAll('#demo-stepper .dot');
+    stepIdx = Math.min(Math.max(stepIdx + d, 0), steps.length - 1);
+    steps.forEach((s, i) => s.classList.toggle('active', i === stepIdx));
+    dots.forEach((s, i) => s.classList.toggle('active', i === stepIdx));
+  }
+
+  // Animated chart demo
+  const chartIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.querySelectorAll('.bar').forEach(b => { b.style.height = b.dataset.h; });
+        chartIO.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.4 });
+  const chart = document.getElementById('demo-chart');
+  if (chart) chartIO.observe(chart);
+</script>
+</body>
+</html>

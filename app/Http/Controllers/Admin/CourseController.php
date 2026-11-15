@@ -90,7 +90,7 @@ class CourseController extends Controller
     {
         Gate::authorize('update', $course);
 
-        $course->load(['lessons.pages', 'lessons.questions', 'creator']);
+        $course->load(['lessons.pages.blocks', 'lessons.questions', 'creator']);
 
         return Inertia::render('admin/courses/Editor', [
             'course' => [
@@ -118,6 +118,12 @@ class CourseController extends Controller
                         'markdown' => $page->markdown,
                         'narration_text' => $page->narration_text,
                         'narration_audio_path' => $page->narration_audio_path,
+                        'blocks' => $page->blocks->map(fn ($block) => [
+                            'id' => $block->id,
+                            'type' => $block->type,
+                            'order' => $block->order,
+                            'data' => $block->data,
+                        ]),
                     ]),
                 ]),
             ],

@@ -13,13 +13,14 @@ import {
     Trash2,
 } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
+import ContentBlockController from '@/actions/App/Http/Controllers/Admin/ContentBlockController';
 import CourseController from '@/actions/App/Http/Controllers/Admin/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/Admin/LessonController';
 import PageController from '@/actions/App/Http/Controllers/Admin/PageController';
 import QuestionController from '@/actions/App/Http/Controllers/Admin/QuestionController';
 import AdminHeader from '@/components/admin/AdminHeader.vue';
+import BlockList from '@/components/admin/blocks/BlockList.vue';
 import CourseTabs from '@/components/admin/CourseTabs.vue';
-import MarkdownEditor from '@/components/admin/MarkdownEditor.vue';
 import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { ContentBlock } from '@/lib/blocks/types';
 import { cn } from '@/lib/utils';
 
 type PageItem = {
@@ -37,6 +39,7 @@ type PageItem = {
     markdown: string;
     narration_text: string | null;
     narration_audio_path: string | null;
+    blocks: ContentBlock[];
 };
 type LessonItem = {
     id: number;
@@ -154,12 +157,15 @@ const courseIssues = computed(() => {
     return issues;
 });
 
+function isPageEmpty(pageItem: PageItem): boolean {
+    return pageItem.blocks.length === 0 && !pageItem.markdown.trim();
+}
+
 function lessonIssues(lesson: LessonItem): string[] {
     const issues: string[] = [];
     if (lesson.pages.length === 0) issues.push('nincs oldal');
     if (lesson.questions.length === 0) issues.push('nincs kérdés');
-    if (lesson.pages.some((p) => !p.markdown.trim()))
-        issues.push('üres oldal');
+    if (lesson.pages.some(isPageEmpty)) issues.push('üres oldal');
     return issues;
 }
 
@@ -580,7 +586,7 @@ const formOptions = { preserveScroll: true, preserveState: true };
                             </button>
 
                             <AlertCircle
-                                v-if="!pageItem.markdown.trim()"
+                                v-if="isPageEmpty(pageItem)"
                                 class="size-3.5 shrink-0 text-amber-500"
                                 title="Üres oldal"
                             />
@@ -908,20 +914,69 @@ const formOptions = { preserveScroll: true, preserveState: true };
                                         <InputError :message="errors.slug" />
                                     </div>
                                 </div>
-
-                                <div class="grid gap-2">
-                                    <Label>Tartalom (Markdown)</Label>
-                                    <MarkdownEditor
-                                        :key="selectedPage.id"
-                                        name="markdown"
-                                        :model-value="selectedPage.markdown"
-                                        :rows="20"
-                                    />
-                                    <InputError :message="errors.markdown" />
-                                </div>
+                                <Button
+                                    type="submit"
+                                    :disabled="processing"
+                                    class="w-fit"
+                                    >Mentés</Button
+                                >
                             </CardContent>
                         </Card>
+                    </Form>
 
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-base">Tartalom</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div
+                                v-if="
+                                    selectedPage.blocks.length === 0 &&
+                                    selectedPage.markdown.trim()
+                                "
+                                class="flex flex-col gap-3"
+                            >
+                                <p class="text-sm text-muted-foreground">
+                                    Ez az oldal még a régi, Markdown-alapú
+                                    formátumban van. Alakítsd blokkokká a
+                                    szerkesztéshez.
+                                </p>
+                                <div
+                                    class="prose prose-sm max-w-none rounded-md border p-3 dark:prose-invert"
+                                    v-html="selectedPage.markdown"
+                                />
+                                <Button
+                                    type="button"
+                                    class="w-fit"
+                                    @click="
+                                        router.post(
+                                            ContentBlockController.convert.url(
+                                                selectedPage.id,
+                                            ),
+                                            {},
+                                            formOptions,
+                                        )
+                                    "
+                                >
+                                    Átalakítás blokkokra
+                                </Button>
+                            </div>
+                            <BlockList
+                                v-else
+                                :key="selectedPage.id"
+                                :page-id="selectedPage.id"
+                                :course-id="course.id"
+                                :blocks="selectedPage.blocks"
+                            />
+                        </CardContent>
+                    </Card>
+
+                    <Form
+                        v-bind="PageController.update.form(selectedPage.id)"
+                        :options="formOptions"
+                        class="flex flex-col gap-4"
+                        v-slot="{ errors, processing }"
+                    >
                         <Card>
                             <CardHeader>
                                 <CardTitle class="text-base"
@@ -973,21 +1028,22 @@ const formOptions = { preserveScroll: true, preserveState: true };
                             </CardContent>
                         </Card>
 
-                        <div class="flex items-center justify-between">
-                            <Button type="submit" :disabled="processing"
-                                >Oldal mentése</Button
-                            >
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                @click="deletePage(selectedPage)"
-                            >
-                                <Trash2 class="size-3.5" /> Oldal törlése
-                            </Button>
-                        </div>
+                        <Button type="submit" :disabled="processing" class="w-fit"
+                            >Narráció mentése</Button
+                        >
                     </Form>
+
+                    <div class="flex justify-end">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            @click="deletePage(selectedPage)"
+                        >
+                            <Trash2 class="size-3.5" /> Oldal törlése
+                        </Button>
+                    </div>
                 </template>
             </div>
         </div>

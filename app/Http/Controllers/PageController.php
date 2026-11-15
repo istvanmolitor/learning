@@ -49,7 +49,16 @@ class PageController extends Controller
                 'total' => $lessonPages->count(),
                 'previous' => $previousPage ? ['slug' => $previousPage->slug, 'title' => $previousPage->title] : null,
                 'next' => $nextPage ? ['slug' => $nextPage->slug, 'title' => $nextPage->title] : null,
+                'dots' => $lessonPages->map(fn ($lessonPage) => [
+                    'slug' => $lessonPage->slug,
+                    'is_completed' => $lessonPage->isCompletedBy($request->user()),
+                ]),
             ],
+            'blocks' => $page->blocks->map(fn ($block) => [
+                'id' => $block->id,
+                'type' => $block->type,
+                'data' => $block->data,
+            ]),
             'contentHtml' => $page->body_html,
         ]);
     }

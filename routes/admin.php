@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\ContentBlockController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
+use App\Http\Controllers\Admin\CourseMediaController;
 use App\Http\Controllers\Admin\EnrollmentController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\GroupUserController;
@@ -42,6 +44,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
         Route::resource('courses.lessons', LessonController::class)->shallow()->only(['store', 'update', 'destroy']);
         Route::resource('lessons.pages', PageController::class)->shallow()->only(['store', 'update', 'destroy']);
         Route::resource('lessons.questions', QuestionController::class)->shallow()->except(['show', 'index']);
+
+        Route::post('pages/{page}/blocks', [ContentBlockController::class, 'store'])->name('pages.blocks.store');
+        Route::post('pages/{page}/blocks/reorder', [ContentBlockController::class, 'reorder'])->name('pages.blocks.reorder');
+        Route::post('pages/{page}/blocks/convert', [ContentBlockController::class, 'convert'])->name('pages.blocks.convert');
+        Route::match(['put', 'patch'], 'blocks/{block}', [ContentBlockController::class, 'update'])->name('blocks.update');
+        Route::delete('blocks/{block}', [ContentBlockController::class, 'destroy'])->name('blocks.destroy');
+
+        Route::post('courses/{course}/media', [CourseMediaController::class, 'store'])->name('courses.media.store');
     });
 
     Route::middleware('permission:manage-users')->group(function () {

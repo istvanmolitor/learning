@@ -2,12 +2,14 @@
 
 namespace App\Services\CourseTransfer;
 
+use App\Blocks\BlockRegistry;
 use App\Models\Course;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Throwable;
 
 /**
  * The import wizard's dry-run step: stages the uploaded package in a temp
@@ -22,7 +24,10 @@ class ImportPlanner
 
     private const STAGING_TTL_HOURS = 24;
 
-    public function __construct(private readonly CourseImporter $importer) {}
+    public function __construct(
+        private readonly CourseImporter $importer,
+        private readonly BlockRegistry $registry,
+    ) {}
 
     /**
      * Stage an uploaded package (zip, loose .md files, or bare course.json) and
@@ -99,6 +104,12 @@ class ImportPlanner
 
                 if (! is_file($file)) {
                     $warnings[] = "Hiányzó oldalfájl: {$pageData['file']} ({$label})";
+
+                    continue;
+                }
+
+                if (Str::endsWith(strtolower($file), '.json')) {
+                    array_push($warnings, ...$this->checkBlockPage($file, $root, $label));
 
                     continue;
                 }
@@ -344,6 +355,73 @@ class ImportPlanner
         }
 
         return $manifest;
+    }
+
+    /**
+     * Dry-run check for a v2 (.json) page file: malformed JSON, an empty or
+     * suspiciously large block list, each block's schema (via the same
+     * BlockRegistry::validate() the admin editor and course:validate both
+     * use), and any block media file the package doesn't actually contain.
+     *
+     * @return string[] warnings
+     */
+    private function checkBlockPage(string $file, string $root, string $label): array
+    {
+        $warnings = [];
+
+        try {
+            $decoded = json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
+        } catch (Throwable) {
+            return ["Érvénytelen JSON oldalfájl: {$label}"];
+        }
+
+        $blocks = $decoded['blocks'] ?? [];
+
+        if ($blocks === []) {
+            return ["Üres oldal: {$label}"];
+        }
+
+        if (count($blocks) > 15) {
+            $warnings[] = 'Túl sok blokk egy oldalon ('.count($blocks).") — a lapozó miatt rövidebb oldalak javasoltak: {$label}";
+        }
+
+        foreach ($blocks as $index => $block) {
+            $type = $block['type'] ?? null;
+            $data = is_array($block['data'] ?? null) ? $block['data'] : [];
+
+            if (! is_string($type) || ! $this->registry->has($type)) {
+                $warnings[] = "Ismeretlen blokktípus „{$type}” ({$label}, #{$index}) — importáláskor helykitöltőként jelenik meg.";
+
+                continue;
+            }
+
+            try {
+                $this->registry->validate($type, $data);
+            } catch (ValidationException $exception) {
+                $warnings[] = "Érvénytelen „{$type}” blokk ({$label}, #{$index}): ".implode(' ', $exception->errors()[array_key_first($exception->errors())] ?? []);
+            }
+
+            $referenced = [];
+            $this->registry->resolve($type)->importData($data, function (string $path) use (&$referenced) {
+                $referenced[] = $path;
+
+                return $path;
+            });
+
+            foreach ($referenced as $path) {
+                if ($path === '' || preg_match('#^https?://#i', $path) === 1) {
+                    continue;
+                }
+
+                $relative = Str::startsWith($path, ['media/', 'images/']) ? $path : 'media/'.$path;
+
+                if (! is_file($root.'/'.$relative)) {
+                    $warnings[] = "Hiányzó média: {$relative} ({$label})";
+                }
+            }
+        }
+
+        return $warnings;
     }
 
     /**

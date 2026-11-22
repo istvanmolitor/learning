@@ -58,6 +58,9 @@ class CourseController extends Controller
 
         $continuePage = $continueLesson?->pages->first(fn ($page) => ! $page->isCompletedBy($user));
 
+        $firstLesson = $allLessons->first();
+        $firstPage = $firstLesson?->pages->first();
+
         return Inertia::render('courses/Show', [
             'course' => [
                 'title' => $course->title,
@@ -69,6 +72,10 @@ class CourseController extends Controller
             'continueTo' => $continueLesson ? [
                 'lessonSlug' => $continueLesson->slug,
                 'pageSlug' => $continuePage?->slug,
+            ] : null,
+            'firstLessonTo' => $firstLesson ? [
+                'lessonSlug' => $firstLesson->slug,
+                'pageSlug' => $firstPage?->slug,
             ] : null,
         ]);
     }

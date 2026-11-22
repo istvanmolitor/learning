@@ -63,22 +63,20 @@ class LessonController extends Controller
         $user = $request->user();
         $isCompleted = $lesson->isCompletedBy($user);
 
-        $questions = $isCompleted
-            ? $lesson->questions->map(function ($question) use ($user) {
-                $response = $question->responses->firstWhere('user_id', $user->id);
+        $questions = $lesson->questions->map(function ($question) use ($user) {
+            $response = $question->responses->firstWhere('user_id', $user->id);
 
-                return [
-                    'id' => $question->id,
-                    'text' => $question->text,
-                    'options' => $question->answerOptions->map(fn ($option) => [
-                        'id' => $option->id,
-                        'text' => $option->text,
-                    ]),
-                    'selected_answer_option_id' => $response?->answer_option_id,
-                    'is_correct' => $response?->isCorrect(),
-                ];
-            })
-            : [];
+            return [
+                'id' => $question->id,
+                'text' => $question->text,
+                'options' => $question->answerOptions->map(fn ($option) => [
+                    'id' => $option->id,
+                    'text' => $option->text,
+                ]),
+                'selected_answer_option_id' => $response?->answer_option_id,
+                'is_correct' => $response?->isCorrect(),
+            ];
+        });
 
         $lessons = $course->lessons()
             ->get()

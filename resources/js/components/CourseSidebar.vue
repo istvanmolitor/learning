@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { CheckCircle2, Circle } from '@lucide/vue';
+import { ArrowLeft, CheckCircle2, Circle } from '@lucide/vue';
 import CourseController from '@/actions/App/Http/Controllers/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/LessonController';
 import AppLogo from '@/components/AppLogo.vue';
@@ -10,7 +10,6 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarGroup,
-    SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
@@ -45,14 +44,22 @@ defineProps<{
 
         <SidebarContent>
             <SidebarGroup class="px-2 py-0">
-                <SidebarGroupLabel>{{ course.title }}</SidebarGroupLabel>
                 <SidebarMenu>
-                    <SidebarMenuItem
-                        v-for="lesson in lessons"
-                        :key="lesson.id"
-                    >
+                    <SidebarMenuItem>
                         <SidebarMenuButton
                             as-child
+                            tooltip="Vissza a kurzushoz"
+                        >
+                            <Link :href="CourseController.show(course.slug)">
+                                <ArrowLeft />
+                                <span>Vissza a kurzushoz</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem v-for="lesson in lessons" :key="lesson.id">
+                        <SidebarMenuButton
+                            as-child
+                            class="lesson-menu-button h-auto items-start py-2 group-data-[collapsible=icon]:items-center!"
                             :is-active="lesson.slug === activeLessonSlug"
                             :tooltip="lesson.title"
                         >
@@ -66,9 +73,9 @@ defineProps<{
                             >
                                 <CheckCircle2
                                     v-if="lesson.is_completed"
-                                    class="text-green-600"
+                                    class="mt-0.5 text-green-600"
                                 />
-                                <Circle v-else />
+                                <Circle v-else class="mt-0.5" />
                                 <span>{{ lesson.title }}</span>
                             </Link>
                         </SidebarMenuButton>
@@ -82,3 +89,11 @@ defineProps<{
         </SidebarFooter>
     </Sidebar>
 </template>
+
+<style scoped>
+:deep(.lesson-menu-button > span:last-child) {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+}
+</style>

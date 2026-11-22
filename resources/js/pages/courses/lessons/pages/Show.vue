@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import CourseController from '@/actions/App/Http/Controllers/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/LessonController';
 import BlockRenderer from '@/components/blocks/BlockRenderer.vue';
 import PagePager from '@/components/courses/PagePager.vue';
@@ -25,12 +24,6 @@ const props = defineProps<{
     blocks: ContentBlock[];
     contentHtml: string;
 }>();
-
-defineOptions({
-    layout: {
-        breadcrumbs: [{ title: 'Kurzusaim', href: CourseController.index() }],
-    },
-});
 </script>
 
 <template>
@@ -68,7 +61,7 @@ defineOptions({
         <BlockRenderer v-if="blocks.length" :blocks="blocks" />
         <div
             v-else
-            class="prose prose-neutral max-w-none dark:prose-invert"
+            class="prose max-w-none prose-neutral dark:prose-invert"
             v-html="contentHtml"
         />
 

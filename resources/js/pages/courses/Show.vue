@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowRight, FileDown } from '@lucide/vue';
+import { ArrowRight, FileDown, Play } from '@lucide/vue';
 import CourseController from '@/actions/App/Http/Controllers/CourseController';
 import LessonController from '@/actions/App/Http/Controllers/LessonController';
 import PageController from '@/actions/App/Http/Controllers/PageController';
@@ -14,13 +14,8 @@ const props = defineProps<{
         thumbnail: string | null;
     };
     continueTo: { lessonSlug: string; pageSlug: string | null } | null;
+    firstLessonTo: { lessonSlug: string; pageSlug: string | null } | null;
 }>();
-
-defineOptions({
-    layout: {
-        breadcrumbs: [{ title: 'Kurzusaim', href: CourseController.index() }],
-    },
-});
 </script>
 
 <template>
@@ -61,6 +56,31 @@ defineOptions({
                 >
                     Kurzus folytatása
                     <ArrowRight class="size-4" />
+                </Link>
+            </Button>
+
+            <Button
+                v-if="firstLessonTo"
+                as-child
+                variant="outline"
+                class="w-fit"
+            >
+                <Link
+                    :href="
+                        firstLessonTo.pageSlug
+                            ? PageController.show([
+                                  props.course.slug,
+                                  firstLessonTo.lessonSlug,
+                                  firstLessonTo.pageSlug,
+                              ])
+                            : LessonController.show([
+                                  props.course.slug,
+                                  firstLessonTo.lessonSlug,
+                              ])
+                    "
+                >
+                    <Play class="size-4" />
+                    Első lecke elejétől
                 </Link>
             </Button>
 

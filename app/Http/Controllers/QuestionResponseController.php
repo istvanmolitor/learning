@@ -18,8 +18,6 @@ class QuestionResponseController extends Controller
 
         $user = $request->user();
 
-        abort_unless($lesson->isCompletedBy($user), 403);
-
         $validated = $request->validate([
             'answer_option_id' => ['required', 'integer', 'exists:answer_options,id'],
         ]);

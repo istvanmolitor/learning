@@ -23,12 +23,6 @@ const progress = computed(() =>
         ? Math.round((completedPagesCount.value / props.pages.length) * 100)
         : 0,
 );
-
-defineOptions({
-    layout: {
-        breadcrumbs: [{ title: 'Kurzusaim', href: CourseController.index() }],
-    },
-});
 </script>
 
 <template>
@@ -69,7 +63,10 @@ defineOptions({
             <div
                 class="flex items-center justify-between text-sm text-muted-foreground"
             >
-                <span>{{ completedPagesCount }} / {{ pages.length }} oldal kész</span>
+                <span
+                    >{{ completedPagesCount }} / {{ pages.length }} oldal
+                    kész</span
+                >
                 <span>{{ progress }}%</span>
             </div>
             <Progress :model-value="progress" />
@@ -94,7 +91,9 @@ defineOptions({
         </div>
 
         <Button as-child variant="outline" class="w-fit">
-            <Link :href="LessonController.questions([course.slug, lesson.slug])">
+            <Link
+                :href="LessonController.questions([course.slug, lesson.slug])"
+            >
                 Teszt kérdések
                 <ArrowRight class="size-4" />
             </Link>
